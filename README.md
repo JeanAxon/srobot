@@ -4,42 +4,140 @@
 ![Python](https://img.shields.io/badge/Python-3.11-yellow.svg)
 ![Platform](https://img.shields.io/badge/Raspberry%20Pi-4-red.svg)
 
-Sistema autónomo en Raspberry Pi 4 para controlar un **Brazo Robótico (5 GDL)** y una **Banda Transportadora** mediante clasificación de imágenes con TensorFlow Lite.
+Este proyecto implementa un servidor web autónomo en una Raspberry Pi 4 para el control de un **Brazo Robótico de 5 GDL** y una **Banda Transportadora**. Utiliza Inteligencia Artificial (TensorFlow Lite) para clasificar objetos en tiempo real y ejecutar decisiones lógicas.
+
+El sistema está diseñado para funcionar como un **Servicio del Sistema (Daemon)**, iniciando automáticamente al encender la Raspberry Pi, con o sin conexión de red.
 
 ---
 
-## 📡 Fase 1: Verificación de Red (Windows CMD)
-*Antes de intentar conectarte, verifica que tu PC ve a la Raspberry Pi a través del cable Ethernet o Wi-Fi.*
+## 📋 Características Principales
 
-1. Conecta el cable Ethernet o asegúrate de estar en la misma red Wi-Fi.
-2. Abre el Símbolo del Sistema en Windows (`Win + R` -> `cmd`).
-3. Ejecuta el ping:
+* 🌐 **Interfaz Web Responsiva:** Control total desde cualquier dispositivo (PC/Móvil) sin instalar apps.
+* 👁️ **Visión Artificial:** Detección de objetos usando modelos TFLite optimizados.
+* 🛡️ **Tolerancia a Fallos:** Inicio seguro incluso sin cámara o Arduino conectados.
+* 🦾 **Control de Hardware:** Gestión de servos y motores a pasos mediante Arduino + Power Shield.
+* 🧠 **Modo Entrenamiento:** Captura de datasets y validación de modelos integrada.
+* ⚙️ **Ejecución Continua:** Funciona en segundo plano como servicio de Linux (`systemd`).
 
+---
+
+## 🛠️ Requisitos de Hardware
+
+| Componente | Especificación |
+| :--- | :--- |
+| **Servidor** | Raspberry Pi 4 (2GB+ RAM) |
+| **Microcontrolador** | Arduino Uno/Mega + **Power Shield** |
+| **Cámara** | Webcam USB estándar |
+| **Actuador 1** | Brazo Robótico (5 Grados de Libertad) |
+| **Actuador 2** | Banda Transportadora (Motor a Pasos) |
+| **Conectividad** | Cable Ethernet (IP Estática) / Wi-Fi |
+
+---
+
+## 💻 Guía de Conexión Remota
+
+Antes de empezar, verifica la comunicación desde tu PC (Windows).
+
+### 1. Test de Conexión (Windows CMD)
+Abre el Símbolo del sistema (`Win + R` -> `cmd`) y ejecuta:
 ```cmd
 ping 192.168.137.50
-✅ Éxito: Si recibes Respuesta desde 192.168.137.50: bytes=32 tiempo<1m, pasa a la Fase 2.❌ Fallo: Si dice "Tiempo de espera agotado" o "Host inaccesible", revisa tu cable Ethernet o la IP estática en Windows.📟 Fase 2: Acceso por Terminal (PuTTY)Utiliza esta opción si solo necesitas reiniciar el servicio, apagar la Raspberry o ejecutar comandos rápidos sin interfaz gráfica.Host Name (or IP address): 192.168.137.50Port: 22Connection type: SSHAl conectar, usa las credenciales:User: mpsPassword: mps123💻 Fase 3: Entorno de Desarrollo (VS Code)Recomendado para editar código (app.py, brazo.py) directamente en la Raspberry Pi desde tu PC.Instala la extensión Remote - SSH en VS Code.Presiona F1 y busca: Remote-SSH: Connect to Host...Ingresa el comando de conexión:Bashssh mps@192.168.137.50
-Ingresa la contraseña (mps123) cuando se solicite.Abre la carpeta del proyecto: /home/mps/srobot.🐙 Gestión de Versiones y Actualizaciones (Git)Comandos para ejecutar dentro de la Raspberry Pi (vía PuTTY o Terminal de VS Code) para gestionar el código.📥 Actualizar a la última versiónSi subiste cambios desde otra PC y quieres descargarlos en el robot:Bashcd /home/mps/srobot
-git pull origin main
-🔄 Cambiar de Versión (Rama/Tag)Si necesitas volver a una versión anterior o probar una rama de desarrollo:Bash# Ver lista de ramas disponibles
-git branch -a
+Si recibes respuesta, la conexión física es correcta.
 
-# Cambiar a una rama especifica
-git checkout nombre-de-la-rama
-🧐 Verificar estado actualPara saber si modificaste algo localmente o en qué versión estás:Bashgit status
-git log --oneline -n 5
-⚙️ Gestión del Servicio (Daemon)El robot funciona como un servicio de fondo. Usa estos comandos para controlarlo.AcciónComandoDetener Robot (Para editar código)sudo systemctl stop srobot.serviceIniciar Robot (Modo producción)sudo systemctl start srobot.serviceVer Logs (Ver errores/prints)journalctl -u srobot.service -fReiniciarsudo systemctl restart srobot.service🚀 Instalación desde Cero (Solo nueva SD)Si necesitas instalar todo en una Raspberry Pi limpia (Debian Bookworm 64-bit):1. Instalar dependencias del sistema:Bashsudo apt update && sudo apt upgrade -y
+2. Conectar con VS Code (Recomendado para Programar)
+Instala la extensión Remote - SSH (Microsoft).
+
+Presiona F1 -> Remote-SSH: Connect to Host...
+
+Escribe: ssh mps@192.168.137.50
+
+Contraseña: mps123
+
+3. Conectar con PuTTY (Solo Terminal)
+Host Name: 192.168.137.50
+
+Port: 22
+
+Type: SSH
+
+🚀 Instalación en Raspberry Pi
+Optimizado para Raspberry Pi OS Legacy (64-bit) Lite (Debian Bookworm).
+
+1. Preparar Sistema
+Bash
+
+sudo apt update && sudo apt upgrade -y
 sudo apt install libgl1 libglib2.0-0 libatlas-base-dev git -y
-2. Clonar y configurar Python:Bashgit clone [https://github.com/JeanAxon/srobot.git](https://github.com/JeanAxon/srobot.git)
+2. Clonar Repositorio
+Bash
+
+git clone [https://github.com/JeanAxon/srobot.git](https://github.com/JeanAxon/srobot.git)
 cd srobot
+3. Configurar Entorno Virtual
+Bash
+
 python3 -m venv venv
 source venv/bin/activate
+4. Instalar Dependencias
+Bash
+
 pip install -r requirements.txt
-3. Instalar Servicio de Auto-Arranque:Bash# Editar ruta si es necesario dentro del archivo srobot.service
-sudo cp srobot.service /etc/systemd/system/
+⚙️ Configuración del Servicio (Arranque Automático)
+Para que el robot inicie solo al conectar la energía, configuramos un servicio systemd.
+
+1. Crear archivo de servicio:
+
+Bash
+
+sudo nano /etc/systemd/system/srobot.service
+(Pegar el contenido proporcionado en la documentación del proyecto).
+
+2. Activar servicio:
+
+Bash
+
 sudo systemctl enable srobot.service
 sudo systemctl start srobot.service
+🛠️ Flujo de Trabajo: Modificaciones y Pruebas
+⚠️ IMPORTANTE: Como el sistema corre automáticamente en segundo plano, no puedes simplemente editar y dar "Run". Debes seguir este orden para evitar errores de "Puerto ocupado":
 
-### Cambios realizados para arreglar tu problema visual:
-1.  **Bloques de Código Fenced:** Usé las tres tildes ( \`\`\` ) estrictamente separadas del texto por líneas en blanco. Esto evita que el texto se "coma" el código como pasaba en tu imagen.
-2.  **Jerarquía Clara:** Usé "Fase 1", "Fase 2", etc., para que el lector entienda que son métodos distintos de conexión, no pasos consecutivos obligatorios.
-3.  **Sección Git Aislada:** Ahora los comandos de git (`pull`, `checkout`, `status`) 
+Detener el Servicio: sudo systemctl stop srobot.service
+
+Editar código: Realiza tus cambios en VS Code.
+
+Prueba Manual: python app.py (Para ver errores en pantalla).
+
+Reactivar Servicio: sudo systemctl start srobot.service
+
+🔄 Guía de Desarrollo (Git)
+Comandos rápidos para mantener tu código sincronizado.
+
+Descargar actualizaciones (En la Raspberry Pi)
+Si hiciste cambios en tu PC y quieres traerlos al robot:
+
+Bash
+
+git pull
+Subir cambios (Desde Raspberry Pi o PC)
+Si modificaste código y quieres guardarlo en GitHub:
+
+Bash
+
+git add .
+git commit -m "Describe aquí tu cambio"
+git push
+🔌 Direcciones de Acceso Web
+El servidor escucha en el puerto 5000.
+
+🔸 Opción A: Cable Ethernet (IP Estática)
+URL: http://192.168.137.50:5000
+
+🔹 Opción B: Wi-Fi
+URL: http://[TU_IP_WIFI]:5000
+
+🚑 Solución de Problemas
+Error "Address already in use": El servidor ya está corriendo en segundo plano. Ejecuta sudo systemctl stop srobot.service.
+
+Cámara no detectada: El sistema iniciará en "Modo Sin Video". Revisa el USB y reinicia el servicio.
+
+Git pide contraseña: GitHub requiere un Personal Access Token. Para guardarlo permanentemente: git config --global credential.helper store.
