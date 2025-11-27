@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Reconocimiento</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Verificación de Reconocimiento</h1>
+    </header>
+
+    <main>
+        <div class="camera-container">
+            <!-- Video en vivo de la cámara con reconocimiento -->
+            <img id="camera-feed" src="{{ url_for('video_feed') }}" alt="Cámara en vivo">
+        </div>
+
+        <div class="back-container">
+            <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+</body>
+</html>

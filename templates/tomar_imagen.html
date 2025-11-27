@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tomar Imágenes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Tomar Imágenes</h1>
+    </header>
+
+    <main>
+        <div class="camera-container">
+            <!-- Video en vivo de la cámara -->
+            <img id="camera-feed" src="{{ url_for('camera_feed') }}" alt="Cámara en vivo">            
+            <div class="controls">
+                <!-- Botón para tomar fotos -->
+                <button id="take-photo-btn" class="btn-secondary">Tomar Foto</button>
+                <!-- Botón para guardar fotos, inicialmente visible pero deshabilitado -->
+                <button id="save-btn" class="btn-secondary" style="display:none;">Guardar</button>
+                <!-- Contador de fotos tomadas -->
+                <p id="photo-counter">Fotos tomadas: 0</p>
+
+                <!-- Botones para controlar la banda transportadora -->
+                <button class="btn-secondary" onclick="controlBanda('activar')">Activar</button>
+                <button class="btn-secondary" onclick="controlBanda('desactivar')">Desactivar</button>
+                <button class="btn-secondary" onclick="controlBanda('derecha')">Giro Derecha</button>
+                <button class="btn-secondary" onclick="controlBanda('izquierda')">Giro Izquierda</button>
+                
+                <!-- Contenedor para el botón de descarga, inicialmente visible pero deshabilitado -->
+                <div id="download-container" style="display:none;">
+                    <label for="folder-select">Seleccionar carpeta para descargar:</label>
+                    <select id="folder-select" class="btn-secondary">
+                        <!-- Las opciones se llenarán dinámicamente -->
+                    </select>
+                    <a id="download-link" href="#" class="btn-secondary" onclick="handleDownload()">Descargar Fotos</a>
+                </div>
+                <!-- Mensaje si no hay carpetas disponibles -->
+                <p id="no-folders-message" style="display:none; color: red;">No hay carpetas disponibles para descargar.</p>
+            </div>
+        </div>
+
+        <div class="button-container">
+            <!-- Botón para volver a la página de entrenamiento -->
+            <button class="btn-back" onclick="window.location.href='{{ url_for('entrenar') }}'">Volver</button>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+
+    <script>
+        let photoCount = 0;
+        const takePhotoButton = document.getElementById('take-photo-btn');
+        const saveButton = document.getElementById('save-btn');
+        const photoCounter = document.getElementById('photo-counter');
+        const downloadContainer = document.getElementById('download-container');
+        const downloadLink = document.getElementById('download-link');
+        const folderSelect = document.getElementById('folder-select');
+        const noFoldersMessage = document.getElementById('no-folders-message');
+
+        let isTakingPhotos = false;
+        let photos = [];  // Array para almacenar las fotos tomadas
+
+        // Lógica para tomar fotos en ráfaga
+        takePhotoButton.addEventListener('mousedown', () => {
+            isTakingPhotos = true;
+            takePhoto();
+        });
+
+        takePhotoButton.addEventListener('mouseup', () => {
+            isTakingPhotos = false;
+        });
+
+        function takePhoto() {
+            if (isTakingPhotos) {
+                // Captura de la imagen desde la cámara
+                const canvas = document.createElement('canvas');
+                const video = document.getElementById('camera-feed');
+                canvas.width = video.width;
+                canvas.height = video.height;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+
+                // Convertir la imagen a base64 para enviarla al servidor
+                const photoData = canvas.toDataURL('image/jpeg');
+
+                // Simulamos la creación del archivo en base64, puedes enviarlo al servidor
+                photos.push(photoData);
+                photoCount++;
+                photoCounter.textContent = `Fotos tomadas: ${photoCount}`;
+
+                // Habilitar el botón de guardar cuando haya fotos tomadas
+                saveButton.style.display = 'inline-block';
+                saveButton.disabled = false;
+
+                // Continuar tomando fotos cada 100ms
+                setTimeout(takePhoto, 100);
+            }
+        }
+
+        // Funcionalidad del botón "Guardar"
+        saveButton.addEventListener('click', () => {
+            if (photos.length === 0) {
+                alert("No hay fotos tomadas para guardar.");
+                return;
+            }
+
+            const folderName = prompt("Escribe el nombre de la carpeta para guardar las fotos:");
+            if (folderName) {
+                // Enviar las imágenes al servidor para guardarlas en una carpeta
+                fetch('/guardar_imagenes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        folder_name: folderName,
+                        photos: photos
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.text())
+                .then(data => {
+                    alert(`Las fotos han sido guardadas en la carpeta ${folderName}`);
+                    photoCount = 0;
+                    photoCounter.textContent = `Fotos tomadas: ${photoCount}`;
+                    photos = [];
+                    saveButton.style.display = 'none'; // Deshabilitar el botón de guardar después de guardar
+                    downloadLink.href = `/descargar/${folderName}`;
+                    downloadContainer.style.display = 'block'; // Mostrar el botón de descarga
+
+                    // Cargar las carpetas disponibles para descargar
+                    loadAvailableFolders();
+                })
+                .catch(error => console.error('Error al guardar las fotos:', error));
+            }
+        });
+
+        // Cargar las carpetas disponibles para la descarga al cargar la página
+        function loadAvailableFolders() {
+            fetch('/obtener_carpetas')
+                .then(response => response.json())
+                .then(folders => {
+                    console.log('Carpetas disponibles:', folders);  // Log para depuración
+        
+                    // Limpiar las opciones del selector
+                    folderSelect.innerHTML = '';
+        
+                    if (folders.length === 0) {
+                        noFoldersMessage.style.display = 'block';
+                        noFoldersMessage.textContent = 'No hay carpetas disponibles.';
+                        downloadContainer.style.display = 'none';  // Ocultar botón de descarga
+                    } else {
+                        noFoldersMessage.style.display = 'none';
+                        downloadContainer.style.display = 'block';  // Mostrar botón de descarga
+        
+                        // Crear una opción por cada carpeta disponible
+                        folders.forEach(folder => {
+                            const option = document.createElement('option');
+                            option.value = folder; // Nombre de la carpeta como valor
+                            option.textContent = folder; // Mostrar el nombre en el selector
+                            folderSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error al cargar las carpetas:', error));
+        }
+        
+
+        // Función para manejar la descarga de fotos
+        function handleDownload() {
+            const folderName = folderSelect.value;
+            if (!folderName) {
+                alert("Selecciona una carpeta para descargar.");  // Mostrar alerta si no hay selección
+                return;
+            }
+            console.log(`Descargando carpeta: ${folderName}`);  // Log para verificar selección
+            window.location.href = `/descargar/${folderName}`;  // Enviar solicitud de descarga
+        }
+        
+
+        // Cargar las carpetas disponibles al cargar la página
+        window.addEventListener('load', () => {
+            loadAvailableFolders();  // Carga la lista de carpetas inmediatamente
+        });
+
+
+        function controlBanda(accion) {
+            fetch(`/control_banda/${accion}`, {
+                method: 'POST'
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data); // Muestra el mensaje en consola, sin popup
+            })
+            .catch(error => {
+                console.error('Error al controlar la banda:', error);
+            });
+        }
+        
+        
+    </script>
+</body>
+</html>

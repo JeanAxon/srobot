@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Modelo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Subir Modelo Generado</h1>
+    </header>
+
+    <main>
+        <!-- Formulario para subir dos archivos de modelos -->
+        <form id="model-upload-form" action="/upload_model" method="POST" enctype="multipart/form-data">
+            <label for="form_model">Seleccionar modelo de formas (archivo ZIP):</label>
+            <input type="file" id="form_model" name="form_model" accept=".zip" required>
+            
+            <label for="color_model">Seleccionar modelo de colores (archivo ZIP):</label>
+            <input type="file" id="color_model" name="color_model" accept=".zip" required>
+        
+            <button type="submit" class="btn-secondary">Subir Modelos</button>
+        </form>
+        
+        <div id="model-info" style="display:none;">
+            <h2>Etiquetas del modelo de formas</h2>
+            <ul id="form-labels-list">
+                <!-- Etiquetas de formas -->
+            </ul>
+        
+            <h2>Etiquetas del modelo de colores</h2>
+            <ul id="color-labels-list">
+                <!-- Etiquetas de colores -->
+            </ul>
+        </div>
+        
+
+        <div class="back-container">
+            <a href="{{ url_for('entrenar') }}" class="btn-back">Volver</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+
+    <script>
+        // Este script manejará la visualización de las etiquetas del modelo subido.
+        function displayLabels(labels, listId) {
+            const labelsList = document.getElementById(listId);
+            labelsList.innerHTML = '';
+        
+            labels.forEach(label => {
+                const listItem = document.createElement('li');
+                listItem.textContent = label;
+                labelsList.appendChild(listItem);
+            });
+        
+            document.getElementById('model-info').style.display = 'block';
+        }
+        
+        const form = document.getElementById('model-upload-form');
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+        
+            const formData = new FormData(form);
+        
+            fetch('/upload_model', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())  // Esperar dos listas: formas y colores
+            .then(data => {
+                // Mostrar las etiquetas separadamente
+                displayLabels(data.form_labels, 'form-labels-list');
+                displayLabels(data.color_labels, 'color-labels-list');
+            })
+            .catch(error => {
+                console.error('Error al subir los modelos:', error);
+            });
+        });
+        
+    </script>
+</body>
+</html>

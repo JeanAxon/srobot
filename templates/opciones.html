@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opciones</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Opciones del Módulo</h1>
+    </header>
+
+    <main>
+        <!-- Sección de Conexiones -->
+        <section id="connection-section">
+            <h2>Conexiones</h2>
+            <button class="btn-secondary" id="search-ports-btn">Buscar Puertos</button>
+            <select id="ports-list" class="btn-secondary" style="display:none;"></select>
+            <button class="btn-primary" id="connect-btn" style="display:none;">Conectar</button>
+            <p id="connection-status" style="display:none;"></p>
+        </section>
+
+        <!-- Sección de Modelos -->
+        <section id="model-info" style="display:none;">
+            <h2>Objetos Entrenados</h2>
+            <ul id="labels-list">
+                {% if labels %}
+                    {% for label in labels %}
+                        <li>{{ label }}</li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
+        </section>
+
+        <!-- Sección de Acciones -->
+        <section class="actions-section">
+            <h2>Acciones</h2>
+            <button class="btn-primary" onclick="iniciarEjecucion()">Ejecutar</button>
+            <button class="btn-primary">Detener</button>
+        </section>
+
+        <!-- Sección de Configuración -->
+        <section class="config-section">
+            <h2>Configuración</h2>
+            <button class="btn-secondary" onclick="window.location.href='{{ url_for('entrenar') }}'">Entrenar</button>
+            
+            {% if model_loaded %}
+                <button class="btn-secondary" onclick="window.location.href='{{ url_for('verificar_reconocimiento') }}'">Verificar Reconocimiento</button>
+            {% else %}
+                <p style="color: red;">Modelos no cargados. Por favor, sube los modelos de formas y colores.</p>
+                <a href="{{ url_for('subir_modelo') }}" class="btn-secondary">Subir Modelos</a>
+            {% endif %}
+            <button class="btn-secondary" onclick="window.location.href='{{ url_for('configurar_movimientos') }}'">Configurar Movimientos</button>
+            <button class="btn-secondary" onclick="window.location.href='{{ url_for('configurar_logica') }}'">Configurar Lógica</button>
+
+            
+        </section>
+    </main>
+
+    <div class="back-container">
+        <a href="{{ url_for('index') }}" class="btn-back">Regresar</a>
+    </div>    
+
+    <footer>
+        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+
+    <script>
+        const searchPortsBtn = document.getElementById('search-ports-btn');
+        const portsList = document.getElementById('ports-list');
+        const connectBtn = document.getElementById('connect-btn');
+        const connectionStatus = document.getElementById('connection-status');
+
+        function iniciarEjecucion() {
+            fetch('/ejecutar', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Ejecución iniciada correctamente.');
+                } else {
+                    response.text().then(text => alert(`Error: ${text}`));
+                }
+            })
+            .catch(error => {
+                alert('Error al iniciar la ejecución.');
+                console.error(error);
+            });
+        }
+
+        searchPortsBtn.addEventListener('click', () => {
+            fetch('/listar_puertos')
+                .then(response => response.json())
+                .then(ports => {
+                    if (ports.length > 0) {
+                        portsList.innerHTML = '';
+                        ports.forEach(port => {
+                            const option = document.createElement('option');
+                            option.value = port;
+                            option.textContent = port;
+                            portsList.appendChild(option);
+                        });
+                        portsList.style.display = 'block';
+                        connectBtn.style.display = 'inline-block';
+                    } else {
+                        alert('No se encontraron puertos disponibles.');
+                    }
+                })
+                .catch(error => console.error('Error al buscar puertos:', error));
+        });
+
+        connectBtn.addEventListener('click', () => {
+            const selectedPort = portsList.value;
+            fetch(`/conectar_serial/${selectedPort}`, { method: 'POST' })
+                .then(response => response.text())
+                .then(status => {
+                    connectionStatus.textContent = status;
+                    connectionStatus.style.display = 'block';
+                })
+                .catch(error => {
+                    connectionStatus.textContent = 'Error al conectar.';
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+</body>
+</html>

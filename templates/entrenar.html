@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de Entrenamiento</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Guía de Entrenamiento</h1>
+    </header>
+
+    <main>
+        <!-- Instrucciones de entrenamiento -->
+        <div class="steps-container">
+            <ol>
+                <li>Tomar imágenes de los objetos a entrenar
+                    <a href="{{ url_for('tomar_imagen') }}" class="btn-secondary">Tomar imágenes</a>
+                </li>
+                <li>Subir las imágenes en 
+                    <a href="https://teachablemachine.withgoogle.com/" class="btn-secondary" target="_blank">Teachable Machine</a>
+                </li>
+                <li>Generar y descargar el modelo desde Teachable Machine.</li>
+                <li>Subir el modelo generado
+                    <a href="{{ url_for('subir_modelo') }}" class="btn-secondary">Subir modelo</a>
+                </li>
+            </ol>
+        </div>
+
+        <div class="button-container">
+            <button class="btn-back" onclick="window.location.href='{{ url_for('opciones') }}'">Volver</button>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+</body>
+</html>

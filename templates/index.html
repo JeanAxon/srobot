@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo Didáctico</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Módulo Didáctico</h1>
+        <h2>Selección de Objetos por Color y Morfología</h2>
+    </header>
+
+    <main>
+        <div class="welcome-container">
+            <p>Bienvenido, en esta interfaz podrás ejecutar y configurar el comportamiento del módulo.</p>
+            <a href="{{ url_for('opciones') }}" class="btn-primary">Comenzar</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+</body>
+</html>

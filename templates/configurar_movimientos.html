@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <!-- Para dispositivos móviles -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurar Movimientos del Brazo</title>
+
+  <style>
+
+
+    .positions-section {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-top: 1rem;
+    }
+    .positions-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .positions-list li {
+      padding: 0.5rem;
+      border-bottom: 1px solid #ccc;
+    }
+    .positions-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .save-movement-container {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .movement-input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    
+
+
+    .positions-list,
+    .movements-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    }
+    .positions-list li,
+    .movements-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-bottom: 1px solid #ccc;
+    }
+    .positions-list li button,
+    .movements-list li button {
+    margin-left: 0.5rem;
+    }
+
+
+    /* ========= RESETEO BÁSICO ========= */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ========= ESTRUCTURA GENERAL ========= */
+    html {
+      font-size: clamp(14px, 2vw, 18px);
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f1f1f1;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ========= ENCABEZADO ========= */
+    header {
+      background-color: #0078d7; 
+      color: #fff;
+      text-align: center;
+      padding: 1rem;
+    }
+    header h1 {
+      font-size: 1.4rem;
+      margin: 0;
+    }
+
+    /* ========= CONTENEDOR PRINCIPAL ========= */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1000px; 
+      margin: 1rem auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 0 1rem;
+    }
+
+    /* Sección arriba donde mostraremos estado de conexión */
+    .connection-status {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .connection-status p {
+      margin: 0.5rem 0;
+    }
+
+    /* Contenedor Vel/Servos */
+    .config-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    /* SECCIÓN VELOCIDAD */
+    .velocity-section {
+      flex: 1;
+      min-width: 240px;
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .section-title {
+      margin-bottom: 1rem;
+      font-weight: bold;
+    }
+    .speed-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .speed-container label {
+      font-weight: bold;
+    }
+    .speed-value {
+      margin-left: 0.4rem;
+      color: #0078d7;
+    }
+
+    /* SECCIÓN SERVOS */
+    .servos-section {
+      flex: 2;
+      min-width: 300px;
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .servo-group {
+      margin-bottom: 1rem;
+    }
+    .servo-label {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      margin-bottom: 0.3rem;
+    }
+
+    /* SLIDERS RESPONSIVOS */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: clamp(8px, 1.5vh, 14px);
+      background: #ccc;
+      border-radius: 0.5rem;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 100%;
+      background: #ccc;
+      border-radius: 0.5rem;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: clamp(24px, 3vh, 36px);
+      height: clamp(24px, 3vh, 36px);
+      border-radius: 50%;
+      background: #0078d7;
+      cursor: pointer;
+      margin-top: calc(-1 * ((clamp(24px, 3vh, 36px) - clamp(8px, 1.5vh, 14px)) / 2));
+      box-shadow: 0 0 2px rgba(0,0,0,0.3);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #005ba1;
+    }
+    /* Firefox */
+    input[type="range"]::-moz-range-track {
+      height: 100%;
+      background: #ccc;
+      border-radius: 0.5rem;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: clamp(24px, 3vh, 36px);
+      height: clamp(24px, 3vh, 36px);
+      border-radius: 50%;
+      background: #0078d7;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* BOTONES INFERIORES */
+    .button-container {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+    .btn-back,
+    .btn-home {
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 1rem;
+    }
+    .btn-back {
+      background-color: #ff6a6a;
+    }
+    .btn-back:hover {
+      background-color: #ff4c4c; 
+    }
+    .btn-home {
+      background-color: #4caf50;
+    }
+    .btn-home:hover {
+      background-color: #45a049;
+    }
+
+    /* TERMINAL (log de comandos) */
+    .terminal {
+      background-color: #000;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 0.9rem;
+      height: 200px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+    }
+
+  
+    /* PIE DE PÁGINA */
+    footer {
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      padding: 0.5rem;
+    }
+    footer p {
+      margin: 0;
+    }
+
+    /* RESPONSIVE EXTRA */
+    @media (max-width: 600px) {
+      .config-container {
+        flex-direction: column;
+      }
+      .velocity-section, 
+      .servos-section {
+        min-width: 100%;
+      }
+      .button-container {
+        flex-direction: column;
+        align-items: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ENCABEZADO -->
+  <header>
+    <h1>Configurar Movimientos del Brazo</h1>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main>
+    <!-- SECCIÓN DE ESTADO DE CONEXIÓN -->
+    <div class="connection-status">
+      <p id="connection-status-text">Verificando conexión...</p>
+    </div>
+
+    <!-- BLOQUE PRINCIPAL DE VELOCIDAD Y SERVOS -->
+    <div class="config-container">
+      <!-- VELOCIDAD -->
+      <div class="velocity-section">
+        <h2 class="section-title">Velocidad</h2>
+        <div class="speed-container">
+          <label for="velocidad">
+            Ajustar velocidad:
+            <span id="speed-value" class="speed-value">50</span>
+          </label>
+          <input type="range" id="velocidad" min="0" max="100" value="50"
+                 oninput="document.getElementById('speed-value').textContent = this.value">
+        </div>
+      </div>
+
+      <!-- SERVOS -->
+      <div class="servos-section">
+        <h2 class="section-title">Servos</h2>
+        {% for i in range(1, 7) %}
+          <div class="servo-group">
+            <div class="servo-label">
+              <span>Servo {{ i }} (°):</span>
+              <span id="servo{{ i }}-val">90</span>
+            </div>
+            <input type="range" id="servo{{ i }}" min="0" max="180" value="90"
+                   oninput="document.getElementById('servo{{ i }}-val').textContent = this.value">
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- BOTONES INFERIORES (HOME + REGRESAR) -->
+    <div class="button-container">
+      <button class="btn-home" id="btn-home" type="button">Home</button>
+      <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
+    </div>
+
+    <!-- TERMINAL PARA MOSTRAR COMANDOS ENVIADOS -->
+    <div class="terminal" id="terminal"></div>
+
+
+    <!-- SECCIÓN DE POSICIONES GUARDADAS -->
+    <div class="positions-section">
+      <h2 class="section-title">Posiciones Guardadas</h2>
+      <ul id="positions-list" class="positions-list"></ul>
+      <div class="positions-buttons">
+        <button class="btn-home" id="save-position">Guardar Posición</button>
+      </div>
+    </div>
+
+    <!-- BOTÓN PARA GUARDAR MOVIMIENTO -->
+    <div class="velocity-section">
+      <h2 class="section-title">Guardar Movimiento</h2>
+      <div class="save-movement-container">
+        <input type="text" id="movement-name" placeholder="Nombre del movimiento" class="movement-input" />
+        <button class="btn-home" id="save-movement">Guardar Movimiento</button>
+      </div>
+    </div>
+
+    <!-- SECCIÓN DE MOVIMIENTOS GUARDADOS -->
+    <div class="servos-section">
+      <h2 class="section-title">Movimientos Guardados</h2>
+      <ul id="movements-list" class="movements-list"></ul>
+    </div>
+
+
+
+  </main>
+
+  <!-- PIE DE PÁGINA -->
+  <footer>
+    <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+  </footer>
+
+  <script>
+
+    // Lista de posiciones guardadas
+    let posiciones = [];
+
+    // Actualizar la lista de posiciones guardadas en la interfaz
+    function actualizarListaPosiciones() {
+      const positionsList = document.getElementById("positions-list");
+      positionsList.innerHTML = posiciones
+        .map(
+          (pos, index) =>
+            `<li>${index + 1}: ${pos} <button class="btn-delete" onclick="borrarPosicion(${index})">Borrar</button></li>`
+        )
+        .join("");
+    }
+
+    // Borrar una posición
+    function borrarPosicion(index) {
+      posiciones.splice(index, 1);
+      actualizarListaPosiciones();
+      logCommand(`Posición ${index + 1} eliminada.`);
+    }
+
+    // Guardar posición actual
+    document.getElementById("save-position").addEventListener("click", () => {
+      const velocidad = document.getElementById("velocidad").value;
+      const servos = Array.from({ length: 6 }, (_, i) =>
+        document.getElementById(`servo${i + 1}`).value
+      );
+
+      const posicion = `Velocidad: ${velocidad}, Servos: [${servos.join(", ")}]`;
+      posiciones.push(posicion);
+      actualizarListaPosiciones();
+      logCommand(`Posición guardada: ${posicion}`);
+    });
+
+    // Guardar movimiento como archivo
+    document.getElementById("save-movement").addEventListener("click", () => {
+      const movementName = document.getElementById("movement-name").value.trim();
+      if (!movementName) {
+        alert("Por favor, ingresa un nombre para el movimiento.");
+        return;
+      }
+
+      fetch("/guardar_movimiento", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ movementName, posiciones }),
+      })
+        .then((response) => response.text())
+        .then((data) => {
+          alert(data);
+          posiciones = [];
+          actualizarListaPosiciones();
+          document.getElementById("movement-name").value = "";
+          logCommand("Movimiento guardado exitosamente.");
+          cargarMovimientosGuardados();
+        })
+        .catch((err) => {
+          logCommand(`Error al guardar el movimiento: ${err}`);
+        });
+    });
+
+    // Cargar movimientos guardados del servidor
+    function cargarMovimientosGuardados() {
+      fetch("/obtener_movimientos")
+        .then((response) => response.json())
+        .then((movimientos) => {
+          const movementsList = document.getElementById("movements-list");
+          movementsList.innerHTML = movimientos
+            .map(
+              (mov) =>
+                `<li>${mov} 
+                  <button class="btn-delete" onclick="borrarMovimiento('${mov}')">Borrar</button> 
+                  <button class="btn-primary" onclick="ejecutarMovimiento('${mov}')">Ejecutar</button>
+                </li>`
+            )
+            .join("");
+        })
+        .catch((err) => logCommand(`Error al cargar movimientos: ${err}`));
+    }
+
+    // Borrar movimiento del servidor
+    function borrarMovimiento(nombre) {
+      fetch(`/borrar_movimiento/${nombre}`, { method: "DELETE" })
+        .then((response) => response.text())
+        .then((data) => {
+          alert(data);
+          cargarMovimientosGuardados();
+        })
+        .catch((err) => logCommand(`Error al borrar movimiento: ${err}`));
+    }
+
+    // Ejecutar movimiento en el brazo
+    function ejecutarMovimiento(nombre) {
+      fetch(`/ejecutar_movimiento/${nombre}`, { method: "POST" })
+        .then((response) => response.text())
+        .then((data) => {
+          alert(data);
+          logCommand(`Movimiento ejecutado: ${nombre}`);
+        })
+        .catch((err) => logCommand(`Error al ejecutar movimiento: ${err}`));
+    }
+
+    // Cargar movimientos al iniciar
+    window.addEventListener("DOMContentLoaded", cargarMovimientosGuardados);
+
+
+    // ========== FUNCIONES DE LOG Y DE ESTADO ==========
+        /*******************
+        *   DEBOUNCE JS   *
+        *******************/
+    function debounce(func, delay) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          func(...args);
+        }, delay);
+      };
+    }    
+    // Agrega texto al terminal
+    function logCommand(message) {
+      const terminal = document.getElementById("terminal");
+      if (!terminal) return;
+      terminal.textContent += message + "\n";
+      terminal.scrollTop = terminal.scrollHeight; // auto-scroll
+    }
+
+    // Verificar estado de la conexión serial
+    function checkConnectionStatus() {
+      fetch('/status_connection')
+        .then(r => r.json())
+        .then(data => {
+          const statusText = document.getElementById("connection-status-text");
+          if (data.connected) {
+            statusText.textContent = `Conexión establecida en puerto ${data.port}`;
+          } else {
+            statusText.textContent = "No hay conexión serial activa.";
+          }
+        })
+        .catch(err => {
+          console.error("Error chequeando conexión:", err);
+        });
+    }
+
+    // ========== FUNCIÓN PARA ENVIAR MOVIMIENTO ==========
+    function enviarMovimiento(servoNum, angulo) {
+      const velocidad = document.getElementById('velocidad').value;
+      const url = `/control_brazo/mover_servo/${servoNum}/${angulo}/${velocidad}`;
+
+      // Loguear el comando antes de enviarlo
+      logCommand(`Enviando: servo ${servoNum} => ${angulo}°, vel ${velocidad}`);
+
+      fetch(url, { method: 'POST' })
+        .then(response => response.text())
+        .then(data => {
+          logCommand(`Respuesta: ${data}`);
+        })
+        .catch(err => {
+          logCommand("Error al enviar movimiento: " + err);
+        });
+    }
+
+    /************************************************
+     * Crear una versión DEBOUNCED de enviarMovimiento
+     ************************************************/
+
+    const enviarMovimientoDebounced = debounce((servoNum, angulo) => {
+      enviarMovimiento(servoNum, angulo);
+    }, 100); // Ajustar 200 ms al gusto (ej. 150, 300)
+
+
+    // ========== CONFIGURAR EVENTOS AL CARGAR LA PÁGINA ==========
+    window.addEventListener('DOMContentLoaded', () => {
+      // Chequeamos el estado de la conexión al iniciar
+      checkConnectionStatus();
+
+      // Configurar cada slider de servo
+      for (let i = 1; i <= 6; i++) {
+        const slider = document.getElementById(`servo${i}`);
+        if (slider) {
+          // Cada vez que el slider cambie (oninput),
+          // llamamos a la función debounced
+          slider.addEventListener('input', () => {
+            const angulo = slider.value;
+            enviarMovimientoDebounced(i, angulo);
+          });
+        }
+      }
+
+      // Botón HOME => Todos los servos a 90
+      const homeBtn = document.getElementById('btn-home');
+      homeBtn.addEventListener('click', () => {
+        for (let i = 1; i <= 6; i++) {
+          const slider = document.getElementById(`servo${i}`);
+          slider.value = 90;
+          document.getElementById(`servo${i}-val`).textContent = "90";
+          enviarMovimiento(i, 90);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
