@@ -2,51 +2,63 @@ import os
 import zipfile
 import time
 import json
+import threading  # <--- CORRECCIÓN 1: Importar threading para no bloquear la web
 from flask import Flask, render_template, Response, request, jsonify, send_file
 import cv2
 from io import BytesIO
 import base64
-import tensorflow as tf
 import numpy as np
+
+# --- CORRECCIÓN 2: Importación compatible con Raspberry Pi y Windows ---
+try:
+    # Intenta importar la versión ligera (Raspberry Pi)
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    # Si falla, usa la versión completa (Windows/PC)
+    import tensorflow.lite as tflite
+# -----------------------------------------------------------------------
 
 # Importa la clase BandaTransportadora
 from modulos.banda_transportadora import BandaTransportadora
 
-from modulos.ejecucion import iniciar_ejecucion  # Importar la función desde ejecucion.py
+# Importar la función de ejecución automática
+from modulos.ejecucion import iniciar_ejecucion
 
 # Importa la clase BrazoRobotico
 from modulos.brazo_robotico import BrazoRobotico
 
-# =============== ADICIONADO ===============
+# Importar librería serial
 import serial
 import serial.tools.list_ports
-# ==========================================
 
-from modulos.reconocimiento import reconocimiento_de_objetos  # Importar el módulo de reconocimiento
+from modulos.reconocimiento import reconocimiento_de_objetos
 
 
 # Función para cargar el modelo TensorFlow Lite
 def cargar_modelo(model_path):
-    """Carga el modelo TensorFlow Lite."""
-    interpreter = tf.lite.Interpreter(model_path=model_path)
+    """Carga el modelo TensorFlow Lite usando el alias 'tflite' definido arriba."""
+    interpreter = tflite.Interpreter(model_path=model_path)
     interpreter.allocate_tensors()
     return interpreter
 
 
-# Inicialización de la cámara al principio
+# --- CORRECCIÓN 3: INICIO TOLERANTE A FALLOS (Sin cámara) ---
 cap = cv2.VideoCapture(0)
+camera_available = False
 
-# Verificar que la cámara se haya abierto correctamente
-if not cap.isOpened():
-    raise Exception("No se pudo acceder a la cámara. Asegúrate de que esté conectada.")
+if cap.isOpened():
+    camera_available = True
+    print("✅ Cámara detectada e iniciada.")
+else:
+    print("⚠️ ADVERTENCIA: No se detectó cámara. El servidor iniciará en modo 'Sin Video'.")
+# ------------------------------------------------------------
 
 
 app = Flask(__name__)
 
-# =============== ADICIONADO ===============
 # Variable global para la conexión serial
 serial_connection = None
-# ==========================================
+
 # Instancia global de BandaTransportadora
 banda = BandaTransportadora()
 
@@ -99,12 +111,9 @@ def opciones():
     )
 
 
-# =============== ADICIONADO ===============
 @app.route("/listar_puertos")
 def listar_puertos():
-    """
-    Devuelve una lista en formato JSON con todos los puertos seriales disponibles.
-    """
+    """Devuelve una lista en formato JSON con todos los puertos seriales disponibles."""
     ports = serial.tools.list_ports.comports()
     port_list = [port.device for port in ports]
     return jsonify(port_list)
@@ -124,10 +133,8 @@ def conectar_serial(puerto):
         serial_connection = serial.Serial(port=puerto, baudrate=9600, timeout=1)
         
         if serial_connection.is_open:
-            # =============== NUEVO ===============
-            # Asigna la conexión abierta a la banda
+            # Asigna la conexión abierta a la banda y al brazo
             banda.set_connection(serial_connection)
-            #  Asigna la conexión abierta al brazo
             brazo.set_connection(serial_connection)
 
             return f"Conectado correctamente al puerto {puerto}"
@@ -137,7 +144,6 @@ def conectar_serial(puerto):
     except Exception as e:
         return f"Error al conectar al puerto {puerto}: {e}", 500
 
-# ==========================================
 
 @app.route("/control_banda/<accion>", methods=["POST"])
 def control_banda(accion):
@@ -147,7 +153,7 @@ def control_banda(accion):
 
     # Según la acción, llamamos a los métodos de la banda
     if accion == "activar":
-        banda.activar()  # Llama banda_transportadora.py -> activar()
+        banda.activar()
         return "Banda activada"
     elif accion == "desactivar":
         banda.desactivar()
@@ -160,7 +166,6 @@ def control_banda(accion):
         return "Banda girando a la izquierda"
     else:
         return "Acción no reconocida", 400
-
 
 
 # Ruta para la página de tomar imagen
@@ -271,70 +276,82 @@ except Exception as e:
     print(f"Error al cargar modelos: {e}")
 
 
-# Verificar la existencia de los modelos y etiquetas
-if os.path.exists(form_model_path) and os.path.exists(form_labels_path):
+# Verificar la existencia de los modelos y etiquetas (Redundancia por si falló el bloque anterior)
+if os.path.exists(form_model_path) and os.path.exists(form_labels_path) and form_interpreter is None:
     with open(form_labels_path, 'r') as file:
         form_labels = file.read().splitlines()
     form_interpreter = cargar_modelo(form_model_path)
 
-if os.path.exists(color_model_path) and os.path.exists(color_labels_path):
+if os.path.exists(color_model_path) and os.path.exists(color_labels_path) and color_interpreter is None:
     with open(color_labels_path, 'r') as file:
         color_labels = file.read().splitlines()
     color_interpreter = cargar_modelo(color_model_path)
 
 
-# Ruta para mostrar video de la cámara conectada al servidor
+# Ruta para mostrar video de la cámara conectada al servidor (CON reconocimiento)
 def gen_frames():
+    # --- MODO SIN CÁMARA O MODELOS: Generar imagen negra ---
     if form_interpreter is None or color_interpreter is None:
         frame = np.zeros((480, 640, 3), dtype=np.uint8)  # Crear un frame negro
-        mensaje = "Modelos no cargados. Por favor, sube los modelos primero."
-        cv2.putText(frame, mensaje, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        mensaje = "Modelos no cargados"
+        cv2.putText(frame, mensaje, (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         return
 
     while True:
-        success, frame = cap.read()
-        if not success:
-            break
+        if camera_available:
+            success, frame = cap.read()
+            if not success:
+                break
+        else:
+            # Generar frame negro si no hay cámara
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "CAMARA NO CONECTADA", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            time.sleep(0.1)  # Simular espera para no saturar CPU
 
         try:
-            # Reconocimiento de forma
-            forma = reconocimiento_de_objetos(frame, form_interpreter, form_labels)
-            # Reconocimiento de color
-            color = reconocimiento_de_objetos(frame, color_interpreter, color_labels)
+            # Solo intentamos reconocer si tenemos una imagen real (cámara conectada)
+            if camera_available:
+                # Reconocimiento de forma
+                forma = reconocimiento_de_objetos(frame, form_interpreter, form_labels)
+                # Reconocimiento de color
+                color = reconocimiento_de_objetos(frame, color_interpreter, color_labels)
 
-            # Manejar el caso de "vacio"
-            if forma == "vacio" or color == "vacio":
-                etiqueta = "Sin detección"
-            else:
-                etiqueta = f"{forma}_{color}"
+                # Manejar el caso de "vacio"
+                if forma == "vacio" or color == "vacio":
+                    etiqueta = "Sin detección"
+                else:
+                    etiqueta = f"{forma}_{color}"
 
-            # Mostrar la etiqueta en el frame
-            cv2.putText(frame, etiqueta, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.putText(frame, etiqueta, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+            
         except Exception as e:
-            print(f"Error en la predicción: {e}")
-            etiqueta = "Error en predicción"
-            cv2.putText(frame, etiqueta, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            # print(f"Error en la predicción: {e}") # Comentado para no saturar la consola
+            pass
 
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
 def gen_raw_frames():
-    """Genera frames crudos de la cámara sin realizar reconocimiento."""
+    """Genera frames crudos o imagen de error si no hay cámara."""
     while True:
-        success, frame = cap.read()  # Leer frame de la cámara
-        if not success:
-            break
+        if camera_available:
+            success, frame = cap.read()  # Leer frame de la cámara
+            if not success:
+                break
+        else:
+            # Imagen de espera
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "NO HAY CAMARA", (180, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            time.sleep(0.1)
+
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
 @app.route("/camera_feed")
@@ -348,7 +365,6 @@ def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-# Ruta para guardar las imágenes tomadas
 @app.route("/guardar_imagenes", methods=["POST"])
 def guardar_imagenes():
     data = request.get_json()
@@ -372,7 +388,6 @@ def guardar_imagenes():
     return "Fotos guardadas exitosamente"
 
 
-# Ruta para obtener las carpetas disponibles para descargar
 @app.route("/obtener_carpetas")
 def obtener_carpetas():
     """Devuelve una lista de todas las carpetas disponibles en 'uploads/'."""
@@ -385,28 +400,25 @@ def obtener_carpetas():
     # Listar todas las carpetas
     folders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
 
-    # Siempre devolver una lista, aunque esté vacía
     return jsonify(folders)
 
 
-# Ruta para comprimir y descargar las imágenes en una carpeta comprimida
 @app.route("/descargar/<folder_name>")
 def descargar(folder_name):
     """Comprime y descarga la carpeta seleccionada como .zip."""
     folder_path = os.path.join("uploads", folder_name)
 
     if not os.path.exists(folder_path):
-        return "La carpeta no existe", 404  # Manejo de errores si la carpeta no está disponible
+        return "La carpeta no existe", 404
 
     zip_filename = f"{folder_name}.zip"
     zip_file = BytesIO()
 
-    # Crear un archivo ZIP de la carpeta seleccionada
     with zipfile.ZipFile(zip_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, folder_path)  # Rutas relativas dentro del ZIP
+                arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
 
     zip_file.seek(0)
@@ -436,16 +448,10 @@ def verificar_reconocimiento():
 
 @app.route("/configurar_movimientos")
 def configurar_movimientos():
-    """
-    Muestra la página con 6 sliders para cada servo y un control de velocidad.
-    """
     return render_template("configurar_movimientos.html")
 
 @app.route("/status_connection")
 def status_connection():
-    """
-    Devuelve en formato JSON si la conexión serial está activa y el puerto actual.
-    """
     global serial_connection
     if serial_connection and serial_connection.is_open:
         return jsonify({"connected": True, "port": serial_connection.port})
@@ -458,9 +464,7 @@ def mover_servo(servo_num, angulo, vel):
     if not serial_connection or not serial_connection.is_open:
         return "No hay conexión activa con el brazo", 400
     
-    # Llamamos a la clase BrazoRobotico para mover el servo en tiempo real
     brazo.mover_servo(servo_num, angulo, vel)
-    
     return f"Servo {servo_num} => {angulo}° con velocidad {vel} OK"
 
 
@@ -473,13 +477,11 @@ def guardar_movimiento():
     if not movement_name or not posiciones:
         return "Nombre del movimiento o posiciones inválidas.", 400
 
-    # Ruta para guardar el archivo
     folder_path = os.path.join("movimientos")
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, f"{movement_name}.txt")
 
     try:
-        # Guardar posiciones en el archivo
         with open(file_path, "w") as file:
             for posicion in posiciones:
                 file.write(f"{posicion}\n")
@@ -495,6 +497,7 @@ def obtener_movimientos():
     movimientos = [f for f in os.listdir(folder_path) if f.endswith(".txt")]
     return jsonify(movimientos)
 
+
 @app.route("/borrar_movimiento/<nombre>", methods=["DELETE"])
 def borrar_movimiento(nombre):
     folder_path = "movimientos"
@@ -504,11 +507,9 @@ def borrar_movimiento(nombre):
         return f"Movimiento '{nombre}' eliminado exitosamente."
     return f"El movimiento '{nombre}' no existe.", 404
 
+
 @app.route("/ejecutar_movimiento/<nombre>", methods=["POST"])
 def ejecutar_movimiento(nombre):
-    """
-    Lee un archivo de movimiento y envía cada posición al brazo robótico.
-    """
     folder_path = "movimientos"
     file_path = os.path.join(folder_path, nombre)
 
@@ -520,20 +521,15 @@ def ejecutar_movimiento(nombre):
             for line in file:
                 line = line.strip()
 
-                # Verificar si la línea está bien formada
                 if "Velocidad:" in line and "Servos:" in line:
                     try:
-                        # Extraer velocidad
                         velocidad = int(line.split("Velocidad:")[1].split(",")[0].strip())
-
-                        # Extraer ángulos de los servos
                         servos_str = line.split("Servos:")[1].strip().strip("[]")
                         servos = [int(angle.strip()) for angle in servos_str.split(",")]
 
-                        # Enviar cada comando de servo al brazo robótico
                         for i, angulo in enumerate(servos, start=1):
                             brazo.mover_servo(i, angulo, velocidad)
-                            time.sleep(0.2)  # Pausa breve entre movimientos para evitar saturación
+                            time.sleep(0.2) 
 
                     except Exception as e:
                         print(f"Error procesando la línea: {line} -> {e}")
@@ -542,6 +538,7 @@ def ejecutar_movimiento(nombre):
         return f"Movimiento '{nombre}' ejecutado exitosamente."
     except Exception as e:
         return f"Error al ejecutar el movimiento: {e}", 500
+
 
 @app.route("/configurar_logica")
 def configurar_logica():
@@ -573,30 +570,28 @@ def guardar_logica():
     logica_path = "logica_config.json"
 
     try:
-        # Guardar las reglas en un archivo JSON
         with open(logica_path, "w") as file:
             json.dump(reglas, file, indent=4)
-
         return "Configuración de lógica guardada exitosamente."
     except Exception as e:
         return f"Error al guardar la configuración: {e}", 500
 
+
 @app.route("/cargar_logica", methods=["GET"])
 def cargar_logica():
     logica_path = "logica_config.json"
-
     if not os.path.exists(logica_path):
-        return jsonify([])  # Devuelve una lista vacía si no hay configuraciones
+        return jsonify([]) 
 
     with open(logica_path, "r") as file:
         reglas = json.load(file)
-
     return jsonify(reglas)
+
 
 @app.route("/ejecutar", methods=["POST"])
 def ejecutar():
     """
-    Inicia el proceso automático usando los modelos cargados y la lógica configurada.
+    Inicia el proceso automático en un HILO SEPARADO para no bloquear Flask.
     """
     try:
         if form_interpreter is None or color_interpreter is None:
@@ -605,14 +600,35 @@ def ejecutar():
         if not serial_connection or not serial_connection.is_open:
             return "Conexión serial no establecida. Por favor, conecta el dispositivo antes de ejecutar.", 400
 
-        # Iniciar la ejecución con los intérpretes, etiquetas, cámara, banda y brazo
-        iniciar_ejecucion(form_interpreter, color_interpreter, form_labels, color_labels, cap, banda, brazo)
-        return "Ejecución iniciada correctamente.", 200
+        # --- CORRECCIÓN IMPORTANTE: Ejecutar en hilo separado ---
+        thread = threading.Thread(
+            target=iniciar_ejecucion,
+            args=(form_interpreter, color_interpreter, form_labels, color_labels, cap, banda, brazo)
+        )
+        thread.daemon = True # El hilo se cerrará si se cierra el programa principal
+        thread.start()
+        # ---------------------------------------------------------
+
+        return "Ejecución iniciada correctamente en segundo plano.", 200
     except Exception as e:
         return f"Error durante la ejecución: {e}", 500
 
 
-
-
 if __name__ == "__main__":
+    # --- MENSAJE INFORMATIVO AL INICIAR ---
+    print("\n" + "="*50)
+    print("  SERVIDOR ROBOT LISTO 🤖")
+    print("  Accede desde tu navegador en estas direcciones:")
+    print("  (Copia la IP y añade :5000 al final)")
+    print("-" * 50)
+    
+    # Muestra las IPs limpias
+    os.system("hostname -I") 
+    
+    print("-" * 50)
+    print("  Ejemplo Cable: http://192.168.137.50:5000")
+    print("  Ejemplo Wi-Fi: http://192.168.1.147:5000  (La tuya puede variar)")
+    print("="*50 + "\n")
+    # ---------------------------------------
+
     app.run(debug=True, host="0.0.0.0", port=5000)

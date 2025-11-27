@@ -1,10 +1,19 @@
-import tensorflow as tf
 import numpy as np
 import cv2
 
+# --- CORRECCIÓN CRÍTICA PARA RASPBERRY PI ---
+try:
+    # Intenta importar la versión ligera (Raspberry Pi)
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    # Si falla, usa la versión completa (Windows/PC)
+    import tensorflow.lite as tflite
+# --------------------------------------------
+
 def cargar_modelo(model_path):
     """Carga el modelo TensorFlow Lite."""
-    interpreter = tf.lite.Interpreter(model_path=model_path)
+    # Usamos el alias 'tflite' que definimos arriba
+    interpreter = tflite.Interpreter(model_path=model_path)
     interpreter.allocate_tensors()
     return interpreter
 
@@ -32,9 +41,13 @@ def reconocimiento_de_objetos(frame, interpreter, labels):
     """
     Realiza el reconocimiento de objetos en un frame utilizando un intérprete cargado.
     """
-    input_data = preprocesar_imagen(frame)
-    predicted_class, _ = obtener_prediccion(interpreter, input_data)
+    try:
+        input_data = preprocesar_imagen(frame)
+        predicted_class, _ = obtener_prediccion(interpreter, input_data)
 
-    # Obtener la etiqueta correspondiente a la clase predicha
-    label = labels[predicted_class]
-    return label
+        # Obtener la etiqueta correspondiente a la clase predicha
+        label = labels[predicted_class]
+        return label
+    except Exception as e:
+        print(f"Error en reconocimiento: {e}")
+        return "Error"
