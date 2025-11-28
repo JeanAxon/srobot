@@ -1,143 +1,300 @@
-# 🤖 S-Robot: Sistema de Control Robótico con IA
+🤖 S-Robot: Plataforma Educativa de Robótica Híbrida
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Python](https://img.shields.io/badge/Python-3.11-yellow.svg)
-![Platform](https://img.shields.io/badge/Raspberry%20Pi-4-red.svg)
+Este proyecto implementa un sistema híbrido de control robótico educativo. Permite controlar un Brazo Robótico de 5 GDL y una Banda Transportadora utilizando visión artificial (TensorFlow Lite), cinemática inversa y comunicación industrial (Modbus TCP).
 
-Este proyecto implementa un servidor web autónomo en una Raspberry Pi 4 para el control de un **Brazo Robótico de 5 GDL** y una **Banda Transportadora**. Utiliza Inteligencia Artificial (TensorFlow Lite) para clasificar objetos en tiempo real y ejecutar decisiones lógicas.
+🏗️ Arquitectura del Sistema
 
-El sistema está diseñado para funcionar como un **Servicio del Sistema (Daemon)**, iniciando automáticamente al encender la Raspberry Pi, con o sin conexión de red.
+El sistema utiliza una Arquitectura de Doble Entrada para facilitar tanto el aprendizaje seguro como el despliegue industrial:
 
----
+Entorno Estudiante (Windows):
 
-## 📋 Características Principales
+Archivo: ServidorMPS.py
 
-* 🌐 **Interfaz Web Responsiva:** Control total desde cualquier dispositivo (PC/Móvil) sin instalar apps.
-* 👁️ **Visión Artificial:** Detección de objetos usando modelos TFLite optimizados.
-* 🛡️ **Tolerancia a Fallos:** Inicio seguro incluso sin cámara o Arduino conectados.
-* 🦾 **Control de Hardware:** Gestión de servos y motores a pasos mediante Arduino + Power Shield.
-* 🧠 **Modo Entrenamiento:** Captura de datasets y validación de modelos integrada.
-* ⚙️ **Ejecución Continua:** Funciona en segundo plano como servicio de Linux (`systemd`).
+Función: Aplicación de escritorio con interfaz gráfica (GUI) moderna. Permite simular la lógica, generar trayectorias y probar algoritmos de visión sin riesgo de dañar el hardware real.
 
----
+Objetivo: Experimentación segura y desarrollo de algoritmos.
 
-## 🛠️ Requisitos de Hardware
+Entorno Laboratorio (Raspberry Pi):
 
-| Componente | Especificación |
-| :--- | :--- |
-| **Servidor** | Raspberry Pi 4 (2GB+ RAM) |
-| **Microcontrolador** | Arduino Uno/Mega + **Power Shield** |
-| **Cámara** | Webcam USB estándar |
-| **Actuador 1** | Brazo Robótico (5 Grados de Libertad) |
-| **Actuador 2** | Banda Transportadora (Motor a Pasos) |
-| **Conectividad** | Cable Ethernet (IP Estática) / Wi-Fi |
+Archivo: app.py (ejecutado automáticamente).
 
----
+Función: Servidor "Headless" (sin monitor) optimizado para rendimiento. Controla los GPIOs, la cámara USB y la comunicación serial con el Arduino en tiempo real.
 
-## 💻 Guía de Conexión Remota
+Objetivo: Control físico y producción.
 
-Antes de empezar, verifica la comunicación desde tu PC (Windows).
+📂 Diccionario de Archivos y Carpetas
 
-### 1. Test de Conexión (Windows CMD)
-Abre el Símbolo del sistema (`Win + R` -> `cmd`) y ejecuta:
-```cmd
+Guía para entender la estructura del proyecto:
+
+🔴 Principales
+
+app.py: (Solo Pi) Servidor Flask principal. Gestiona la cámara, hilos y rutas web.
+
+ServidorMPS.py: (Solo Windows) Interfaz gráfica que envuelve el servidor para facilitar el uso en PC.
+
+requirements_windows.txt: Librerías para PC (incluye GUI, OpenCV full).
+
+requirements_rpi.txt: Librerías optimizadas para Pi (headless, sin GUI).
+
+🔵 Lógica (/modulos)
+
+reconocimiento.py: Procesa la imagen y usa TFLite para detectar color/forma.
+
+ejecucion.py: Máquina de estados que controla el ciclo automático (Banda -> Cámara -> Brazo).
+
+cinematica_inversa.py: Algoritmo CCD para calcular ángulos de servos desde coordenadas (X,Y,Z).
+
+cinematica_inversa_local.py: Algoritmo alternativo usando scipy.optimize.
+
+generador_trayectoria.py: Crea movimientos suaves (Splines) entre dos puntos.
+
+🟢 Hardware (/modulos)
+
+brazo_robotico.py: Envía comandos seriales (A,90...) al Arduino.
+
+banda_transportadora.py: Controla el motor de la banda (P, A).
+
+com_modbus.py: Puente para conectar con PLCs industriales.
+
+📂 Carpetas de Datos y Firmware
+
+uploads/: Directorio de almacenamiento. Aquí se guardan automáticamente las fotos capturadas para entrenamiento y los modelos .tflite subidos desde la web.
+
+movimientos/: Almacena las secuencias de movimiento creadas por el usuario en formato .txt.
+
+Servo_Motor/: Contiene el código fuente del Arduino (Servo_Motor.ino). Sirve como respaldo y permite modificar el comportamiento de bajo nivel del microcontrolador (velocidades máximas, aceleración) cargándolo directamente desde la Pi.
+
+📄 Configuración
+
+logica_config.json: Base de datos de reglas automáticas (Ej: "Si veo [Círculo Azul] -> Ejecutar [Movimiento B]").
+
+estado.json: Guarda la última posición conocida de los servos y la velocidad para no perder la calibración al reiniciar.
+
+🔌 Parte 1: Conexión Inicial (Obligatorio Ethernet)
+
+⚠️ IMPORTANTE: Para la primera conexión, o si cambias de red, usa siempre el cable Ethernet.
+
+1. Preparar tu PC (Windows)
+
+Configura tu computadora para compartir internet con el robot (ICS). Esto asigna la IP correcta al robot.
+
+Conecta tu PC al Wi-Fi.
+
+Presiona Win + R, escribe ncpa.cpl y pulsa Enter.
+
+Clic derecho en tu adaptador Wi-Fi -> Propiedades -> Pestaña Uso compartido.
+
+Marca "Permitir que los usuarios de otras redes se conecten...".
+
+En "Conexión de red doméstica", selecciona tu adaptador Ethernet.
+
+Acepta.
+
+🚑 Solución: ¿Problemas al conectar después de reiniciar?
+
+Si apagas la PC y al volver no conecta, Windows suele "congelar" el servicio de compartir.
+
+Vuelve a ncpa.cpl -> Propiedades Wi-Fi -> Uso compartido.
+
+DESMARCA la casilla y acepta.
+
+Espera 5 segundos.
+
+VUELVE A MARCARLA y acepta.
+
+Esto reinicia el servidor DHCP de Windows.
+
+2. Verificar Conexión
+
+Conecta el cable Ethernet.
+
+Abre cmd y ejecuta:
+
 ping 192.168.137.50
-Si recibes respuesta, la conexión física es correcta.
 
-2. Conectar con VS Code (Recomendado para Programar)
-Instala la extensión Remote - SSH (Microsoft).
 
-Presiona F1 -> Remote-SSH: Connect to Host...
+(Si responde, estás listo. Si no, intenta ping mps.local).
 
-Escribe: ssh mps@192.168.137.50
+3. Diagnóstico con PuTTY
+
+Usa PuTTY para verificar el estado interno y obtener la IP del Wi-Fi.
+
+Host: 192.168.137.50 | Port: 22 | Type: SSH
+
+Usuario: mps
 
 Contraseña: mps123
 
-3. Conectar con PuTTY (Solo Terminal)
-Host Name: 192.168.137.50
+Comandos Útiles en PuTTY:
 
-Port: 22
+ip -c a: Muestra las IPs. Anota la IP de wlan0 si quieres conectarte por Wi-Fi luego.
 
-Type: SSH
+sudo systemctl status srobot.service: Verifica si el robot está corriendo.
 
-🚀 Instalación en Raspberry Pi
-Optimizado para Raspberry Pi OS Legacy (64-bit) Lite (Debian Bookworm).
+ping -c 2 8.8.8.8: Verifica si el robot tiene internet.
 
-1. Preparar Sistema
-Bash
+💻 Parte 2: Entorno de Desarrollo (Windows)
 
-sudo apt update && sudo apt upgrade -y
-sudo apt install libgl1 libglib2.0-0 libatlas-base-dev git -y
-2. Clonar Repositorio
-Bash
+Pasos para que el estudiante instale el simulador en su propia PC.
+
+1. Requisitos Previos
+
+Tener instalado Git y Python 3.11.
+
+Tener instalado VS Code.
+
+2. Clonar el Repositorio
+
+Crea una carpeta en tu escritorio.
+
+Abre una terminal ahí y ejecuta:
 
 git clone [https://github.com/JeanAxon/srobot.git](https://github.com/JeanAxon/srobot.git)
 cd srobot
-3. Configurar Entorno Virtual
-Bash
 
-python3 -m venv venv
+
+3. Configurar Entorno
+
+# Crear entorno virtual
+python -m venv venv
+.\venv\Scripts\activate
+
+# Instalar dependencias completas (Versión Windows con GUI)
+pip install -r requirements_windows.txt
+
+
+4. Ejecutar Simulador
+
+python ServidorMPS.py
+
+
+Se abrirá el Panel de Control. Puedes probar la lógica y generar archivos de movimiento aquí.
+
+🚀 Parte 3: Programación en el Robot (VS Code Remoto)
+
+Cómo cargar y probar tu código en la Raspberry Pi sin romper la configuración.
+
+1. Configurar SSH en VS Code
+
+Instala la extensión Remote - SSH.
+
+Clic en el icono verde >< -> "Open SSH Configuration File...".
+
+Copia y pega esto al final del archivo (Evita errores de huella/fingerprint):
+
+# Conexión Segura por Cable
+Host Robot-Cable
+    HostName 192.168.137.50
+    User mps
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+# Conexión por Wi-Fi (IP Variable, revísala en PuTTY)
+Host Robot-Wifi
+    HostName 192.168.1.XX
+    User mps
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+
+
+2. Cargar y Editar
+
+Conéctate a Robot-Cable. Introduce la contraseña mps123.
+
+Puedes editar los archivos directamente.
+
+O arrastrar tus archivos modificados desde Windows a la carpeta /home/mps/srobot (sobrescribir).
+
+⚠️ Protocolo de Prueba (Obligatorio)
+
+El servicio automático bloquea la cámara y el puerto. Sigue este orden:
+
+DETENER SERVICIO: En la terminal de VS Code:
+
+sudo systemctl stop srobot.service
+
+
+EJECUTAR MANUALMENTE: (Verás los errores en tiempo real)
+
 source venv/bin/activate
-4. Instalar Dependencias
-Bash
+python app.py
 
-pip install -r requirements.txt
-⚙️ Configuración del Servicio (Arranque Automático)
-Para que el robot inicie solo al conectar la energía, configuramos un servicio systemd.
 
-1. Crear archivo de servicio:
+(Presiona Ctrl+C para detener la prueba manual).
 
-Bash
+REACTIVAR: Al terminar la clase, deja el robot listo:
 
-sudo nano /etc/systemd/system/srobot.service
-(Pegar el contenido proporcionado en la documentación del proyecto).
-
-2. Activar servicio:
-
-Bash
-
-sudo systemctl enable srobot.service
 sudo systemctl start srobot.service
-🛠️ Flujo de Trabajo: Modificaciones y Pruebas
-⚠️ IMPORTANTE: Como el sistema corre automáticamente en segundo plano, no puedes simplemente editar y dar "Run". Debes seguir este orden para evitar errores de "Puerto ocupado":
 
-Detener el Servicio: sudo systemctl stop srobot.service
 
-Editar código: Realiza tus cambios en VS Code.
+👨‍🏫 Parte 4: Gestión del Repositorio (Guía para el Profesor)
 
-Prueba Manual: python app.py (Para ver errores en pantalla).
+Comandos para actualizar la Raspberry Pi con cambios del repositorio remoto o subir cambios locales al repositorio.
 
-Reactivar Servicio: sudo systemctl start srobot.service
+Actualizar la Pi desde el Repositorio (Descargar cambios)
 
-🔄 Guía de Desarrollo (Git)
-Comandos rápidos para mantener tu código sincronizado.
+Si has actualizado el código en GitHub desde tu PC y quieres que la Raspberry Pi tenga la última versión:
 
-Descargar actualizaciones (En la Raspberry Pi)
-Si hiciste cambios en tu PC y quieres traerlos al robot:
+Conéctate a la Pi (por SSH en VS Code o PuTTY).
 
-Bash
+Ve a la carpeta del proyecto:
+
+cd ~/srobot
+
+
+Descarga los cambios:
 
 git pull
-Subir cambios (Desde Raspberry Pi o PC)
-Si modificaste código y quieres guardarlo en GitHub:
 
-Bash
+
+(Si hay conflictos locales, git te avisará. Si solo quieres sobrescribir todo con lo del repositorio, usa el Botón de Pánico abajo).
+
+Si hubo cambios en las librerías, actualízalas:
+
+source venv/bin/activate
+pip install -r requirements_rpi.txt
+
+
+Reinicia el servicio para aplicar los cambios:
+
+sudo systemctl restart srobot.service
+
+
+Subir Cambios desde la Pi al Repositorio (Cargar cambios)
+
+Si hiciste correcciones directamente en la Raspberry Pi y quieres guardarlas en GitHub:
+
+Verifica qué archivos has modificado:
+
+git status
+
+
+Añade los archivos al "paquete" de subida:
 
 git add .
-git commit -m "Describe aquí tu cambio"
+
+
+Guarda el paquete con un mensaje descriptivo:
+
+git commit -m "Descripción de los cambios realizados en la Pi"
+
+
+Sube los cambios a GitHub:
+
 git push
-🔌 Direcciones de Acceso Web
-El servidor escucha en el puerto 5000.
 
-🔸 Opción A: Cable Ethernet (IP Estática)
-URL: http://192.168.137.50:5000
 
-🔹 Opción B: Wi-Fi
-URL: http://[TU_IP_WIFI]:5000
+(Te pedirá usuario y contraseña/token si no has configurado el guardado de credenciales).
 
-🚑 Solución de Problemas
-Error "Address already in use": El servidor ya está corriendo en segundo plano. Ejecuta sudo systemctl stop srobot.service.
+🔁 Parte 5: Botón de Pánico (Restauración)
 
-Cámara no detectada: El sistema iniciará en "Modo Sin Video". Revisa el USB y reinicia el servicio.
+Este repositorio actúa como la "Imagen Maestra". Si modificas el código en la Pi y el sistema deja de funcionar, NO INTENTES ARREGLARLO MANUALMENTE.
 
-Git pide contraseña: GitHub requiere un Personal Access Token. Para guardarlo permanentemente: git config --global credential.helper store.
+Ejecuta estos comandos en la terminal de la Raspberry Pi para volver a la versión original del profesor:
+
+cd ~/srobot
+git fetch origin
+git reset --hard origin/main
+
+
+*El sistema descargará el código original de GitHub y descartará tus cambios locales
