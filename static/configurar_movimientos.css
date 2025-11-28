@@ -1,0 +1,285 @@
+/************************************************************
+  configurar_movimientos.css
+  Estilos ESPECÍFICOS para la página "Configurar Movimientos"
+************************************************************/
+
+/* =====================================
+   1. ENCABEZADO (header-configurar)
+   ===================================== */
+   .header-configurar {
+    display: flex;
+    /* Separa el primer y último elemento a los extremos */
+    justify-content: space-between;
+    align-items: center;
+  
+    flex-wrap: nowrap;    /* o 'wrap' si quieres que el contenido baje de línea en pantallas pequeñas */
+    background-color: #0066cc;
+    color: #fff;
+    padding: 10px 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;   /* Importante para anclar el feedback con position:absolute */
+  }
+  
+  /* Botón de Regresar (lado izquierdo) */
+  .header-configurar .btn-back {
+    display: flex;
+    align-items: center;
+    background-color: #ff6b6b;
+    color: white;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0; /* Evita que se encoja */
+  }
+  .header-configurar .btn-back:hover {
+    background-color: #e63946;
+  }
+  
+  /* Título (ocupando el espacio central, centrado) */
+  .header-configurar h1 {
+    flex: 1;            /* se expande para ocupar el espacio sobrante */
+    margin: 0;          /* quita márgenes por defecto */
+    font-size: 1.4rem;
+    text-align: center; /* centra el texto dentro de su espacio */
+  }
+  
+  /* Estado de conexión (lado derecho) */
+  .header-configurar .connection-status {
+    background-color: #fff;
+    color: #0078d7;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    margin-left: 1rem;
+    flex-shrink: 0;     /* evita que se encoja demasiado */
+  }
+  
+  /* Feedback visual ABSOLUTO (flotando, sin desplazar) */
+  .header-configurar #feedback-message {
+    position: absolute;  
+    top: 10px;          /* ajústalo si quieres más separación vertical */
+    right: 20px;        /* ajusta si quieres moverlo más a la derecha o izquierda */
+  
+    background: #4caf50;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    display: none;      /* se muestra vía JS cuando corresponda */
+    z-index: 10;
+  }
+  
+  /* Encabezado responsivo en pantallas <600px */
+  @media (max-width: 600px) {
+    .header-configurar {
+      flex-wrap: wrap;           /* Permite que baje de línea si no cabe */
+      justify-content: flex-start;
+      align-items: flex-start;
+    }
+  
+    .header-configurar .btn-back {
+      margin-bottom: 0.5rem;
+    }
+  
+    .header-configurar h1 {
+      flex: 1 1 100%;
+      text-align: left; /* Si prefieres mantenerlo a la izquierda en pantallas chicas */
+      margin-bottom: 0.5rem;
+    }
+  
+    .header-configurar .connection-status {
+      margin-bottom: 0.5rem;
+    }
+  
+    .header-configurar #feedback-message {
+      top: auto;
+      bottom: 10px;
+      right: 10px;
+    }
+  }
+  
+  /* =====================================
+     2. CONTENEDOR PRINCIPAL DE CONFIGURACIÓN
+     ===================================== */
+  .config-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* =====================================
+     3. SECCIONES DE VELOCIDAD, SERVOS, ETC.
+     ===================================== */
+  /* Sección de Velocidad */
+  .velocity-section {
+    flex: 1 1 240px;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .speed-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .speed-container label {
+    font-weight: bold;
+  }
+  .speed-value {
+    margin-left: 0.4rem;
+    color: #0078d7;
+  }
+  
+  /* Sección de Servos */
+  .servos-section {
+    flex: 2 1 300px;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .servo-group {
+    margin-bottom: 1rem;
+  }
+  .servo-label {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+  }
+  
+  /* Inputs tipo range (sliders) */
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: clamp(8px, 1.5vh, 14px);
+    background: #ccc;
+    border-radius: 0.5rem;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 100%;
+    background: #ccc;
+    border-radius: 0.5rem;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: clamp(24px, 3vh, 36px);
+    height: clamp(24px, 3vh, 36px);
+    border-radius: 50%;
+    background: #0078d7;
+    cursor: pointer;
+    margin-top: calc(-1 * ((clamp(24px, 3vh, 36px) - clamp(8px, 1.5vh, 14px)) / 2));
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #005ba1;
+  }
+  input[type="range"]::-moz-range-track {
+    height: 100%;
+    background: #ccc;
+    border-radius: 0.5rem;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: clamp(24px, 3vh, 36px);
+    height: clamp(24px, 3vh, 36px);
+    border-radius: 50%;
+    background: #0078d7;
+    cursor: pointer;
+    border: none;
+  }
+  
+  /* =====================================
+     4. BOTONES ESPECÍFICOS
+     ===================================== */
+  .btn-home {
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 1rem;
+    background-color: #4caf50;
+    margin-top: 1rem;
+  }
+  .btn-home:hover {
+    background-color: #45a049;
+  }
+  
+  /* =====================================
+     5. SECCIONES DE POSICIONES / MOVIMIENTOS
+     ===================================== */
+  .positions-section {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 1rem;
+  }
+  .positions-list,
+  .movements-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .positions-list li,
+  .movements-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-bottom: 1px solid #ccc;
+  }
+  .positions-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  
+  /* Contenedor para guardar un movimiento */
+  .save-movement-container {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .movement-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  /* =====================================
+     6. FEEDBACK VISUAL
+     ===================================== */
+  /* Definido dentro de .header-configurar con position: absolute */
+  
+  /* =====================================
+     7. MEDIA QUERIES para layout responsivo
+     ===================================== */
+  @media (max-width: 600px) {
+    /* Apila las secciones en columna */
+    .config-container {
+      flex-direction: column;
+    }
+  
+    .velocity-section,
+    .servos-section {
+      min-width: 100%;
+    }
+  
+    .button-container {
+      flex-direction: column;
+      align-items: flex-end;
+    }
+  }
+  

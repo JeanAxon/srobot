@@ -1,49 +1,95 @@
-/* Estilos Generales */
-body {
-    font-family: 'Roboto', Arial, sans-serif;
+/* General styles */
+html, body {
+    /* Aseguramos que ambos tengan box-sizing y no generen scroll extra */
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+*, *::before, *::after {
+    box-sizing: inherit;
+}
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
     background-color: #f4f8fb;
     color: #333;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    /* OJO: "align-items: stretch" a veces genera scroll si hay elementos muy anchos */
+    align-items: stretch;  
+    justify-content: flex-start;
     min-height: 100vh;
+    width: 100%; /* Asegura ocupar el 100% del viewport */
+    overflow-x: hidden; /* Como último recurso, ocultamos overflow horizontal. */
 }
 
-/* Encabezado */
+/* ================== HEADER styles ================== */
 header {
+    display: flex;
+    /* flex-wrap permite que los elementos del header
+       pasen a la segunda línea si no caben en ancho. */
+    flex-wrap: wrap;
+
+    align-items: center;
+    /* "justify-content: space-between" separa el contenido
+       hacia los extremos, si lo deseas: */
+    justify-content: space-between;
+
     background-color: #0066cc;
     color: white;
-    width: 100%;
-    text-align: center;
-    padding: 20px 10px;
+    padding: 10px 20px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-header h1 {
-    margin: 0;
-    font-size: 28px;
+.btn-back {
+    display: flex; 
+    align-items: center; 
+    background-color: #ff6b6b;
+    color: white;
+    padding: 10px 20px;
+    font-size: 18px; 
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    /* Evita que el botón crezca sin límite */
+    flex-shrink: 0;
+}
+
+.btn-back:hover {
+    background-color: #e63946;
+}
+
+/* Ícono dentro del botón (opcional) */
+.btn-back i {
+    margin-right: 8px;
+    font-size: 24px;
+}
+
+/* Centrar el título en el header si lo deseas */
+.main-title {
+    margin: 0 auto;
+    font-size: 22px;
     font-weight: bold;
 }
 
-header h2 {
-    margin: 5px 0 0;
-    font-size: 18px;
-    font-weight: normal;
-}
-
-/* Contenedor principal */
+/* ================== MAIN content styles ================== */
 main {
     flex: 1;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
     padding: 20px;
 }
 
+/* Ejemplo de un contenedor con estilos */
 .welcome-container {
     background: white;
     padding: 30px;
@@ -60,7 +106,7 @@ main {
     margin-bottom: 20px;
 }
 
-/* Botón primario */
+/* ================== Buttons Globales ================== */
 .btn-primary {
     background-color: #0066cc;
     color: white;
@@ -76,29 +122,6 @@ main {
     background-color: #004a99;
 }
 
-/* Pie de página */
-footer {
-    background-color: #333;
-    color: white;
-    text-align: center;
-    padding: 10px 0;
-    width: 100%;
-    margin-top: 20px; /* Espacio superior para separar del contenido */
-    position: relative; /* Evitar conflictos con otros elementos */
-}
-
-/* Estilos para la Página de Opciones */
-.actions-section, .config-section {
-    margin: 20px 0;
-    text-align: center;
-}
-
-.actions-section h2, .config-section h2 {
-    font-size: 20px;
-    margin-bottom: 10px;
-}
-
-/* Botón Secundario */
 .btn-secondary {
     background-color: #f4a261;
     color: white;
@@ -115,77 +138,134 @@ footer {
     background-color: #e76f51;
 }
 
-/* Contenedor del Botón de Regresar */
-.back-container {
-    text-align: center;
-    margin: 20px auto; /* Centrado y separación vertical */
-    padding-bottom: 40px; /* Espacio extra para evitar colisiones */
+/* ================== Sections ================== */
+.section {
+    margin: 20px auto;
+    padding: 1.5rem;
+    max-width: 900px;
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
-/* Botón de Regresar */
-.btn-back {
-    background-color: #ff6b6b;
+.section-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #3f51b5;
+}
+
+/* ================== Dropdown Menus ================== */
+.config-button, 
+.connection-button {
+    background-color: #0066cc;
     color: white;
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 10px 15px;
     border: none;
     border-radius: 6px;
-    text-decoration: none;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin-bottom: 20px; /* Espacio adicional para evitar conflictos */
 }
 
-.btn-back:hover {
-    background-color: #e63946;
+.dropdown-menu {
+    display: none;
+    position: absolute; 
+    top: 100%; 
+    left: 0; 
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    z-index: 1000;
+    width: 200px; 
 }
 
-/* Asegurando que el contenedor de los pasos esté bien organizado */
-.steps-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 20px;
+.config-button:hover + .dropdown-menu,
+.connection-button:hover + .dropdown-menu {
+    display: block;
 }
 
+.dropdown-menu a {
+    display: block;
+    padding: 10px;
+    color: #333;
+    text-decoration: none;
+    border-bottom: 1px solid #ddd;
+}
+
+.dropdown-menu a:last-child {
+    border-bottom: none;
+}
+
+.dropdown-menu a:hover {
+    background-color: #f4f4f4;
+}
+
+/* ================== Footer styles ================== */
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 10px 0;
+    width: 100%;
+}
+
+/* ================== Responsive Design ================== */
+@media (max-width: 768px) {
+
+    body {
+        font-size: 0.9rem;
+        /* Si quieres, podrías desactivar la propiedad flex en body 
+           para pantallas muy pequeñas: 
+           display: block; 
+        */
+    }
+
+    header h1 {
+        font-size: 24px;
+    }
+
+    header h2 {
+        font-size: 16px;
+    }
+
+    /* Forzar header a columna si no cabe */
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .welcome-container {
+        padding: 20px;
+    }
+
+    button {
+        width: 100%;
+        padding: 0.75rem;
+    }
+
+    .section {
+        margin: 10px auto;
+        padding: 1rem;
+    }
+
+    .dropdown-menu {
+        top: 50px;
+        right: 5px;
+        width: 90%;
+    }
+}
+
+/* Estilos para la lista de pasos */
 .steps-container ol {
-    list-style-type: decimal;
-    padding-left: 20px;
-    font-size: 18px;
-    line-height: 1.8;
+    list-style-position: inside;
+    padding-left: 0;
 }
 
-.steps-container a.btn-secondary {
-    margin-top: 10px;
-    display: inline-block;
-}
-
-/* Asegurando que el contenedor del botón "Volver" se alinee bien */
-.button-container {
+.steps-container li {
+    margin-bottom: 15px;
     display: flex;
-    justify-content: center;
-    align-items: center; /* Asegura que el botón esté centrado verticalmente */
-    margin-top: 40px;  /* Separación de los elementos anteriores */
-    margin-bottom: 30px; /* Espacio en la parte inferior para separar de pie de página */
-    width: 100%; /* Asegura que el contenedor ocupe todo el ancho disponible */
+    align-items: center;
 }
 
-/* Asegurar que el botón "Volver" tenga un buen espacio y esté centrado */
-.button-container .btn-back {
-    background-color: #ff6b6b;
-    color: white;
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    text-align: center;
-    display: inline-block;
-}
-
-.button-container .btn-back:hover {
-    background-color: #e63946;
+.steps-container li a {
+    margin-left: auto;
 }
