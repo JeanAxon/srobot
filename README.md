@@ -643,10 +643,12 @@ Con estos comandos, se descartan los cambios locales y se restablece el proyecto
 
 ## 📜 Licencia
 
-Este proyecto se distribuye bajo la licencia indicada en el archivo `LICENSE` incluido en el repositorio (por ejemplo, MIT).
+Este proyecto se distribuye bajo la licencia MIT. Puede ser usado y modificado por cualquier persona, pero siempre dando credito al autor.
 
 ---
 
 ## 📫 Contacto
 
-Para consultas técnicas, comentarios o propuestas de mejora, se recomienda utilizar el sistema de *issues* del repositorio o el medio de contacto indicado por la persona responsable del proyecto.
+Para consultas técnicas, comentarios o propuestas de mejora se puede contactar por estos medios. 
+correo: jeanruizespinoza@gmail.com
+whastapp: wa.me/593990969814
