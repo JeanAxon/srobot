@@ -1,581 +1,928 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <!-- Para dispositivos móviles -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Configurar Movimientos del Brazo</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control del Brazo Robótico - Entorno Industrial</title>
 
+  <!-- CSS global -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <!-- CSS específico para "Configurar Movimientos" -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='configurar_movimientos.css') }}">
+
+  <!-- Estilos inline -->
   <style>
-
-
-    .positions-section {
-      background-color: #fff;
-      border-radius: 8px;
-      padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      margin-top: 1rem;
-    }
-    .positions-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .positions-list li {
-      padding: 0.5rem;
-      border-bottom: 1px solid #ccc;
-    }
-    .positions-buttons {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-    .save-movement-container {
-      margin-top: 1rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-    .movement-input {
-      flex: 1;
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    
-
-
-    .positions-list,
-    .movements-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    }
-    .positions-list li,
-    .movements-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem;
-    border-bottom: 1px solid #ccc;
-    }
-    .positions-list li button,
-    .movements-list li button {
-    margin-left: 0.5rem;
-    }
-
-
-    /* ========= RESETEO BÁSICO ========= */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    /* ========= ESTRUCTURA GENERAL ========= */
-    html {
-      font-size: clamp(14px, 2vw, 18px);
-    }
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f1f1f1;
-      color: #333;
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ========= ENCABEZADO ========= */
-    header {
-      background-color: #0078d7; 
-      color: #fff;
-      text-align: center;
-      padding: 1rem;
-    }
-    header h1 {
-      font-size: 1.4rem;
-      margin: 0;
-    }
-
-    /* ========= CONTENEDOR PRINCIPAL ========= */
-    main {
-      flex: 1;
-      width: 100%;
-      max-width: 1000px; 
-      margin: 1rem auto;
-      display: flex;
-      flex-direction: column;
+    /* Contenedor principal del control */
+    .control-wrapper {
+      display: grid;
+      grid-template-columns: 80px 1fr;
       gap: 1rem;
-      padding: 0 1rem;
+      align-items: flex-start;
     }
-
-    /* Sección arriba donde mostraremos estado de conexión */
-    .connection-status {
-      background-color: #fff;
-      border-radius: 8px;
-      padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .connection-status p {
-      margin: 0.5rem 0;
-    }
-
-    /* Contenedor Vel/Servos */
-    .config-container {
+    .vertical-speed-slider {
       display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
+      flex-direction: column; /* Cambia a columna para apilar etiqueta y slider */
+      align-items: center; /* Centra horizontalmente */
+      justify-content: center; /* Centra verticalmente dentro del contenedor */
+      background-color: #f5f5f5;
+      padding: 1rem;
+      border-radius: 8px;
+      min-height: 400px;
+    }
+    .label-container {
+      writing-mode: horizontal-tb; /* Cambia a horizontal para que sea legible */
+      margin-bottom: 10px; /* Espacio entre la etiqueta y el slider */
+    }
+    .vertical-speed-slider input[type="range"] {
+      transform: rotate(-90deg);
+      width: 200px;
     }
 
-    /* SECCIÓN VELOCIDAD */
-    .velocity-section {
-      flex: 1;
-      min-width: 240px;
-      background-color: #fff;
-      border-radius: 8px;
+    .servo-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      background-color: #f5f5f5;
       padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .section-title {
-      margin-bottom: 1rem;
-      font-weight: bold;
-    }
-    .speed-container {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .speed-container label {
-      font-weight: bold;
-    }
-    .speed-value {
-      margin-left: 0.4rem;
-      color: #0078d7;
-    }
-
-    /* SECCIÓN SERVOS */
-    .servos-section {
-      flex: 2;
-      min-width: 300px;
-      background-color: #fff;
       border-radius: 8px;
-      padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .servo-group {
-      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     .servo-label {
-      display: flex;
-      justify-content: space-between;
       font-weight: bold;
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.5rem;
+      text-align: left;
     }
-
-    /* SLIDERS RESPONSIVOS */
-    input[type="range"] {
-      -webkit-appearance: none;
+    .servo-group input[type="range"] {
       width: 100%;
-      height: clamp(8px, 1.5vh, 14px);
-      background: #ccc;
-      border-radius: 0.5rem;
-      outline: none;
-    }
-    input[type="range"]::-webkit-slider-runnable-track {
-      height: 100%;
-      background: #ccc;
-      border-radius: 0.5rem;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: clamp(24px, 3vh, 36px);
-      height: clamp(24px, 3vh, 36px);
-      border-radius: 50%;
-      background: #0078d7;
-      cursor: pointer;
-      margin-top: calc(-1 * ((clamp(24px, 3vh, 36px) - clamp(8px, 1.5vh, 14px)) / 2));
-      box-shadow: 0 0 2px rgba(0,0,0,0.3);
-    }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      background: #005ba1;
-    }
-    /* Firefox */
-    input[type="range"]::-moz-range-track {
-      height: 100%;
-      background: #ccc;
-      border-radius: 0.5rem;
-    }
-    input[type="range"]::-moz-range-thumb {
-      width: clamp(24px, 3vh, 36px);
-      height: clamp(24px, 3vh, 36px);
-      border-radius: 50%;
-      background: #0078d7;
-      cursor: pointer;
-      border: none;
-    }
-
-    /* BOTONES INFERIORES */
-    .button-container {
-      display: flex;
-      gap: 1rem;
-      justify-content: flex-end;
-      margin-top: 1rem;
-    }
-    .btn-back,
-    .btn-home {
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      padding: 0.6rem 1rem;
-      cursor: pointer;
-      text-decoration: none;
-      font-size: 1rem;
-    }
-    .btn-back {
-      background-color: #ff6a6a;
-    }
-    .btn-back:hover {
-      background-color: #ff4c4c; 
-    }
-    .btn-home {
-      background-color: #4caf50;
-    }
-    .btn-home:hover {
-      background-color: #45a049;
-    }
-
-    /* TERMINAL (log de comandos) */
-    .terminal {
-      background-color: #000;
-      color: #0f0;
-      font-family: monospace;
-      font-size: 0.9rem;
-      height: 200px;
-      overflow-y: auto;
-      padding: 0.5rem;
-      border-radius: 8px;
-      margin-top: 1rem;
-      white-space: pre-wrap;
-    }
-
-  
-    /* PIE DE PÁGINA */
-    footer {
-      background-color: #333;
-      color: #fff;
-      text-align: center;
-      padding: 0.5rem;
-    }
-    footer p {
+      height: 2px;
       margin: 0;
     }
-
-    /* RESPONSIVE EXTRA */
-    @media (max-width: 600px) {
-      .config-container {
-        flex-direction: column;
-      }
-      .velocity-section, 
-      .servos-section {
-        min-width: 100%;
-      }
-      .button-container {
-        flex-direction: column;
-        align-items: flex-end;
-      }
+    .confirmado {
+      border: 2px solid #4caf50 !important;
+      border-radius: 8px;
+    }
+    .btn-home, .btn-delete, .btn-area-trabajo {
+      background-color: #0078d7;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-delete {
+      background-color: #ff6b6b;
+    }
+    /* Estilo para el botón del área de trabajo */
+    .btn-area-trabajo {
+      margin-top: 1rem;
+      width: 100%;
+    }
+    /* Estilos para los botones del gripper */
+    .gripper-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .gripper-btn {
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .gripper-btn.active {
+      background-color: #0078d7;
+      color: #fff;
+      border-color: #0078d7;
     }
   </style>
+
+  <!-- Librerías externas -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
+  <!-- Three.js y OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Socket.IO cliente -->
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
-  <!-- ENCABEZADO -->
-  <header>
-    <h1>Configurar Movimientos del Brazo</h1>
-  </header>
-
-  <!-- CONTENIDO PRINCIPAL -->
-  <main>
-    <!-- SECCIÓN DE ESTADO DE CONEXIÓN -->
+  <!-- CABECERA -->
+  <header class="header-configurar">
+    <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
+    <h1 id="header-title">Configurar Movimientos</h1>
     <div class="connection-status">
       <p id="connection-status-text">Verificando conexión...</p>
     </div>
+    <div id="feedback-message"></div>
+  </header>
 
-    <!-- BLOQUE PRINCIPAL DE VELOCIDAD Y SERVOS -->
+  <!-- CUERPO PRINCIPAL -->
+  <main>
     <div class="config-container">
-      <!-- VELOCIDAD -->
-      <div class="velocity-section">
-        <h2 class="section-title">Velocidad</h2>
-        <div class="speed-container">
-          <label for="velocidad">
-            Ajustar velocidad:
-            <span id="speed-value" class="speed-value">50</span>
-          </label>
-          <input type="range" id="velocidad" min="0" max="100" value="50"
-                 oninput="document.getElementById('speed-value').textContent = this.value">
+      <!-- SECCIÓN CONTROL -->
+      <div class="servos-section">
+        <h2 class="section-title">Control</h2>
+        <div class="control-wrapper">
+          <!-- SLIDER VERTICAL DE VELOCIDAD -->
+          <div class="vertical-speed-slider" id="container-velocidad">
+            <div class="label-container">
+              <label for="velocidad">Velocidad: <span id="speed-value">50</span></label>
+            </div>
+            <input type="range" id="velocidad" min="0" max="100" value="50">
+          </div>
+          <!-- CONTENEDOR DE SERVOS -->
+          <div class="servo-controls">
+            <!-- Control del Gripper primero -->
+            <div class="servo-group" id="container-servo6">
+              <label class="servo-label">
+                Apertura Gripper: <span id="servo6-val">90</span>°
+              </label>
+              <div class="gripper-buttons">
+                <button id="gripper-open" class="gripper-btn active">Abierto (90°)</button>
+                <button id="gripper-close" class="gripper-btn">Cerrado (120°)</button>
+              </div>
+            </div>
+            <!-- Sliders de servo5 a servo1 -->
+            {% set servo_labels = {1:"Base", 2:"Hombro", 3:"Codo", 4:"Muñeca", 5:"Rot Gripper"} %}
+            {% for i in range(5, 0, -1) %}
+              <div class="servo-group" id="container-servo{{ i }}">
+                <label for="servo{{ i }}" class="servo-label">
+                  {{ servo_labels[i] }}: <span id="servo{{ i }}-val">90</span>°
+                </label>
+                <input type="range" id="servo{{ i }}" min="0" max="180" value="90">
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        <button class="btn-home" id="btn-home" type="button" style="margin-top: 1rem; width: 100%;">Home</button>
+        <button class="btn-home" id="save-position" style="margin-top: 1rem; width: 100%;">Guardar Posición</button>
+      </div>
+
+      <!-- SECCIÓN SIMULACIÓN 3D -->
+      <div id="robot-simulation-container" class="servos-section">
+        <h2 class="section-title">Simulación 3D del Brazo</h2>
+        <div id="robot-simulation" style="height: 500px; width: 100%;"></div>
+        <!-- Botón para mostrar el área de trabajo -->
+        <button class="btn-area-trabajo" id="btn-area-trabajo" type="button">Área de trabajo</button>
+      </div>
+
+      <!-- SECCIÓN INFO GRIPPER Y PUNTOS -->
+      <div id="gripper-info-section" class="servos-section" style="margin-top: 1rem;">
+        <h2 class="section-title">Posición y Orientación del Gripper</h2>
+        <p>
+          <strong>Posición:</strong> X: <span id="gripper-x">0</span>,
+          Y: <span id="gripper-y">0</span>,
+          Z: <span id="gripper-z">0</span>
+        </p>
+        <p>
+          <strong>Orientación:</strong> Roll: <span id="gripper-roll">0</span>°,
+          Pitch: <span id="gripper-pitch">0</span>°,
+          Yaw: <span id="gripper-yaw">0</span>°
+        </p>
+        <input type="text" id="point-name" placeholder="Nombre del punto" style="width: 80%; padding: 8px; margin: 10px 0;">
+        <button id="save-point-btn" class="btn-home" style="background-color: #0078d7;">Guardar Punto</button>
+        <div id="saved-points-section" style="margin-top: 1rem;">
+          <h3 class="section-title">Puntos Guardados</h3>
+          <ul id="saved-points-list"></ul>
         </div>
       </div>
 
-      <!-- SERVOS -->
+      <!-- SECCIÓN POSICIONES GUARDADAS -->
+      <div class="positions-section">
+        <h2 class="section-title">Posiciones Guardadas</h2>
+        <ul id="positions-list" class="positions-list"></ul>
+      </div>
+
+      <!-- SECCIÓN GUARDAR MOVIMIENTOS -->
+      <div class="velocity-section">
+        <h2 class="section-title">Guardar Movimiento</h2>
+        <div class="save-movement-container">
+          <input type="text" id="movement-name" placeholder="Nombre del movimiento" class="movement-input">
+          <button class="btn-home" id="save-movement">Guardar Movimiento</button>
+        </div>
+      </div>
+
+      <!-- LISTA DE MOVIMIENTOS GUARDADOS -->
       <div class="servos-section">
-        <h2 class="section-title">Servos</h2>
-        {% for i in range(1, 7) %}
-          <div class="servo-group">
-            <div class="servo-label">
-              <span>Servo {{ i }} (°):</span>
-              <span id="servo{{ i }}-val">90</span>
-            </div>
-            <input type="range" id="servo{{ i }}" min="0" max="180" value="90"
-                   oninput="document.getElementById('servo{{ i }}-val').textContent = this.value">
-          </div>
-        {% endfor %}
+        <h2 class="section-title">Movimientos Guardados</h2>
+        <ul id="movements-list" class="movements-list"></ul>
+      </div>
+
+      <!-- LISTA DE MOVIMIENTOS CARGADOS -->
+      <div class="servos-section">
+        <h2 class="section-title">Movimientos Cargados</h2>
+        <ul id="loaded-movement-list" class="movements-list"></ul>
+        <button class="btn-delete" id="clear-loaded-movement" onclick="quitarMovimientoCargado()">Quitar Movimiento</button>
       </div>
     </div>
-
-    <!-- BOTONES INFERIORES (HOME + REGRESAR) -->
-    <div class="button-container">
-      <button class="btn-home" id="btn-home" type="button">Home</button>
-      <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
-    </div>
-
-    <!-- TERMINAL PARA MOSTRAR COMANDOS ENVIADOS -->
-    <div class="terminal" id="terminal"></div>
-
-
-    <!-- SECCIÓN DE POSICIONES GUARDADAS -->
-    <div class="positions-section">
-      <h2 class="section-title">Posiciones Guardadas</h2>
-      <ul id="positions-list" class="positions-list"></ul>
-      <div class="positions-buttons">
-        <button class="btn-home" id="save-position">Guardar Posición</button>
-      </div>
-    </div>
-
-    <!-- BOTÓN PARA GUARDAR MOVIMIENTO -->
-    <div class="velocity-section">
-      <h2 class="section-title">Guardar Movimiento</h2>
-      <div class="save-movement-container">
-        <input type="text" id="movement-name" placeholder="Nombre del movimiento" class="movement-input" />
-        <button class="btn-home" id="save-movement">Guardar Movimiento</button>
-      </div>
-    </div>
-
-    <!-- SECCIÓN DE MOVIMIENTOS GUARDADOS -->
-    <div class="servos-section">
-      <h2 class="section-title">Movimientos Guardados</h2>
-      <ul id="movements-list" class="movements-list"></ul>
-    </div>
-
-
-
   </main>
 
   <!-- PIE DE PÁGINA -->
   <footer>
-    <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+    <p>© 2025 MODS MCT - Sistemas de Control</p>
   </footer>
-
+  <!-- SCRIPT PRINCIPAL -->
   <script>
+    console.log("Script de movimientos cargado");
 
-    // Lista de posiciones guardadas
-    let posiciones = [];
-
-    // Actualizar la lista de posiciones guardadas en la interfaz
-    function actualizarListaPosiciones() {
-      const positionsList = document.getElementById("positions-list");
-      positionsList.innerHTML = posiciones
-        .map(
-          (pos, index) =>
-            `<li>${index + 1}: ${pos} <button class="btn-delete" onclick="borrarPosicion(${index})">Borrar</button></li>`
-        )
-        .join("");
-    }
-
-    // Borrar una posición
-    function borrarPosicion(index) {
-      posiciones.splice(index, 1);
-      actualizarListaPosiciones();
-      logCommand(`Posición ${index + 1} eliminada.`);
-    }
-
-    // Guardar posición actual
-    document.getElementById("save-position").addEventListener("click", () => {
-      const velocidad = document.getElementById("velocidad").value;
-      const servos = Array.from({ length: 6 }, (_, i) =>
-        document.getElementById(`servo${i + 1}`).value
-      );
-
-      const posicion = `Velocidad: ${velocidad}, Servos: [${servos.join(", ")}]`;
-      posiciones.push(posicion);
-      actualizarListaPosiciones();
-      logCommand(`Posición guardada: ${posicion}`);
+    // Conexión con Socket.IO
+    const socket = io();
+    socket.on("connect", () => {
+      console.log("Conectado al servidor en tiempo real.");
+    });
+    socket.on("movement_updated", (data) => {
+      console.log("Movimiento actualizado:", data);
+    });
+    socket.on("logic_updated", (data) => {
+      console.log("Lógica actualizada:", data);
+    });
+    socket.on("movements_list", (data) => {
+      console.log("Lista de movimientos:", data.movimientos);
+    });
+    socket.on("state_updated", (data) => {
+      console.log("Estado actualizado recibido:", data);
+      actualizarControles(data);
     });
 
-    // Guardar movimiento como archivo
+    // Variables globales
+    let userInteractingServo = null;
+    let currentServoValues = Array(6).fill(90);
+    // Variable global para almacenar la nube de puntos del área de trabajo
+    window.areaTrabajoPoints = null;
+
+    // Función debounce
+    const debounce = (func, wait) => {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    };
+
+    // Guardar estado en backend
+    const guardarEstado = () => {
+      const estado = {
+        servos: currentServoValues,
+        velocidad: document.getElementById('velocidad').value
+      };
+      fetch("/guardar_estado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(estado)
+      })
+      .then(response => response.json())
+      .then(data => console.log("Estado guardado:", data))
+      .catch(err => console.error("Error guardando estado:", err));
+    };
+
+    // Actualizar controles según el estado recibido
+    function actualizarControles(estado) {
+      if (estado.velocidad !== undefined) {
+        document.getElementById('velocidad').value = estado.velocidad;
+        document.getElementById('speed-value').textContent = estado.velocidad;
+      }
+      if (estado.servos && estado.servos.length === 6) {
+        currentServoValues = estado.servos;
+        for (let i = 1; i <= 5; i++) {
+          if (userInteractingServo !== i) {
+            const slider = document.getElementById(`servo${i}`);
+            const label = document.getElementById(`servo${i}-val`);
+            slider.value = estado.servos[i - 1];
+            label.textContent = estado.servos[i - 1];
+          }
+        }
+        // Actualizar estado del gripper
+        const servo6Value = estado.servos[5];
+        document.getElementById('servo6-val').textContent = servo6Value;
+        const gripperOpenBtn = document.getElementById('gripper-open');
+        const gripperCloseBtn = document.getElementById('gripper-close');
+        if (servo6Value === 90) {
+          gripperOpenBtn.classList.add('active');
+          gripperCloseBtn.classList.remove('active');
+        } else if (servo6Value === 120) {
+          gripperOpenBtn.classList.remove('active');
+          gripperCloseBtn.classList.add('active');
+        }
+        if (window.updateSimulation) window.updateSimulation();
+      }
+    }
+
+    // Cargar estado guardado
+    function cargarEstadoGuardado() {
+      fetch("/obtener_estado")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Estado obtenido:", data);
+          actualizarControles(data);
+        })
+        .catch(err => console.error("Error al obtener estado guardado:", err));
+    }
+
+    // Enviar comando global a los servos
+    const enviarMovimientoGlobal = () => {
+      const velocidad = document.getElementById('velocidad').value;
+      const data = { velocidad: parseInt(velocidad), servos: currentServoValues };
+      console.log("Enviando comando global:", data);
+      fetch("/control_brazo/mover_servos_global", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.text())
+      .then(resp => console.log("Respuesta:", resp))
+      .catch(err => console.error("Error al enviar comando global:", err));
+    };
+    const enviarMovimientoGlobalDebounced = debounce(enviarMovimientoGlobal, 100);
+
+    // Actualizar información del gripper (cinemática directa)
+    function updateGripperInfo() {
+      const data = { servos: currentServoValues };
+      fetch("/calcular_posicion_gripper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.error) {
+          console.error("Error en cálculo cinemático:", result.error);
+          return;
+        }
+        document.getElementById("gripper-x").textContent = result.x;
+        document.getElementById("gripper-y").textContent = result.y;
+        document.getElementById("gripper-z").textContent = result.z;
+        document.getElementById("gripper-roll").textContent = result.roll;
+        document.getElementById("gripper-pitch").textContent = result.pitch;
+        document.getElementById("gripper-yaw").textContent = result.yaw;
+      })
+      .catch(err => console.error("Error al actualizar gripper info:", err));
+    }
+
+    // Configurar eventos para los sliders
+    const setupSliderEvents = () => {
+      const velocidadSlider = document.getElementById('velocidad');
+      const containerVelocidad = document.getElementById('container-velocidad');
+      velocidadSlider.addEventListener('mousedown', () => { userInteractingServo = 0; });
+      velocidadSlider.addEventListener('mouseup', () => { userInteractingServo = null; });
+      velocidadSlider.addEventListener('input', () => {
+        document.getElementById('speed-value').textContent = velocidadSlider.value;
+        enviarMovimientoGlobalDebounced();
+        if (window.updateSimulation) window.updateSimulation();
+        updateGripperInfo();
+      });
+      velocidadSlider.addEventListener('change', () => {
+        guardarEstado();
+        containerVelocidad.classList.add("confirmado");
+        setTimeout(() => { containerVelocidad.classList.remove("confirmado"); }, 500);
+      });
+
+      for (let i = 1; i <= 5; i++) {
+        const slider = document.getElementById(`servo${i}`);
+        const container = document.getElementById(`container-servo${i}`);
+        slider.addEventListener('mousedown', () => { userInteractingServo = i; });
+        slider.addEventListener('mouseup', () => { userInteractingServo = null; });
+        slider.addEventListener('input', () => {
+          const val = parseFloat(slider.value);
+          document.getElementById(`servo${i}-val`).textContent = val;
+          currentServoValues[i - 1] = val;
+          enviarMovimientoGlobalDebounced();
+          if (window.updateSimulation) window.updateSimulation();
+          updateGripperInfo();
+          socket.emit("servo_update", { servoIndex: i - 1, angle: val });
+        });
+        slider.addEventListener('change', () => {
+          guardarEstado();
+          container.classList.add("confirmado");
+          setTimeout(() => { container.classList.remove("confirmado"); }, 500);
+        });
+      }
+
+      // Configurar botones del gripper
+      const gripperOpenBtn = document.getElementById('gripper-open');
+      const gripperCloseBtn = document.getElementById('gripper-close');
+      const servo6Val = document.getElementById('servo6-val');
+
+      function setGripperState(isOpen) {
+        const value = isOpen ? 90 : 120;
+        currentServoValues[5] = value;
+        servo6Val.textContent = value;
+        if (isOpen) {
+          gripperOpenBtn.classList.add('active');
+          gripperCloseBtn.classList.remove('active');
+        } else {
+          gripperOpenBtn.classList.remove('active');
+          gripperCloseBtn.classList.add('active');
+        }
+        enviarMovimientoGlobalDebounced();
+        if (window.updateSimulation) window.updateSimulation();
+        updateGripperInfo();
+        guardarEstado();
+      }
+
+      gripperOpenBtn.addEventListener('click', () => {
+        setGripperState(true);
+      });
+
+      gripperCloseBtn.addEventListener('click', () => {
+        setGripperState(false);
+      });
+
+      // Establecer estado inicial
+      setGripperState(true);
+    };
+
+    // Configurar botón "Home"
+    const setupHomeButton = () => {
+      const btnHome = document.getElementById('btn-home');
+      btnHome.addEventListener('click', () => {
+        userInteractingServo = 0;
+        for (let i = 1; i <= 5; i++) {
+          const slider = document.getElementById(`servo${i}`);
+          slider.value = 90;
+          document.getElementById(`servo${i}-val`).textContent = "90";
+          currentServoValues[i - 1] = 90;
+        }
+        setGripperState(true); // Establecer gripper a abierto (90°)
+        enviarMovimientoGlobal();
+        if (window.updateSimulation) window.updateSimulation();
+        updateGripperInfo();
+        guardarEstado();
+        btnHome.classList.add("confirmado");
+        setTimeout(() => { btnHome.classList.remove("confirmado"); }, 500);
+        userInteractingServo = null;
+      });
+    };
+
+    // Gestión de posiciones guardadas localmente
+    let posiciones = [];
+    const actualizarListaPosiciones = () => {
+      const positionsList = document.getElementById("positions-list");
+      positionsList.innerHTML = posiciones.length ? `
+        <ol>
+          ${posiciones.map((pos, index) => `
+            <li>
+              <strong>Posición ${index + 1}</strong>: Velocidad: ${pos.velocidad}, Servos: [${pos.servos.join(", ")}]
+              <button class="btn-delete" onclick="borrarPosicion(${index})">Borrar</button>
+            </li>
+          `).join("")}
+        </ol>
+      ` : "<p>No hay posiciones guardadas.</p>";
+    };
+    const borrarPosicion = index => {
+      posiciones.splice(index, 1);
+      actualizarListaPosiciones();
+      console.log(`Posición ${index + 1} eliminada.`);
+    };
+    document.getElementById("save-position").addEventListener("click", () => {
+      const velocidad = document.getElementById("velocidad").value;
+      posiciones.push({ velocidad: parseInt(velocidad), servos: [...currentServoValues] });
+      actualizarListaPosiciones();
+      console.log(`Posición guardada: ${JSON.stringify(posiciones[posiciones.length - 1])}`);
+    });
+
+    // Gestión de movimientos
     document.getElementById("save-movement").addEventListener("click", () => {
       const movementName = document.getElementById("movement-name").value.trim();
       if (!movementName) {
         alert("Por favor, ingresa un nombre para el movimiento.");
         return;
       }
-
       fetch("/guardar_movimiento", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ movementName, posiciones }),
+        body: JSON.stringify({ movementName, posiciones })
       })
-        .then((response) => response.text())
-        .then((data) => {
-          alert(data);
-          posiciones = [];
-          actualizarListaPosiciones();
-          document.getElementById("movement-name").value = "";
-          logCommand("Movimiento guardado exitosamente.");
-          cargarMovimientosGuardados();
-        })
-        .catch((err) => {
-          logCommand(`Error al guardar el movimiento: ${err}`);
-        });
+      .then(response => response.text())
+      .then(resp => {
+        alert(resp);
+        posiciones = [];
+        actualizarListaPosiciones();
+        document.getElementById("movement-name").value = "";
+        console.log("Movimiento guardado exitosamente.");
+        cargarMovimientosGuardados();
+      })
+      .catch(err => console.error(`Error al guardar el movimiento: ${err}`));
     });
-
-    // Cargar movimientos guardados del servidor
-    function cargarMovimientosGuardados() {
+    let movimientosCargados = [];
+    const irAposicion = index => {
+      const movimiento = movimientosCargados[index];
+      if (!movimiento) {
+        console.log(`No se encontró el movimiento en el índice ${index}`);
+        return;
+      }
+      document.getElementById("velocidad").value = movimiento.velocidad;
+      document.getElementById("speed-value").textContent = movimiento.velocidad;
+      currentServoValues = movimiento.servos.slice();
+      for (let i = 1; i <= 5; i++) {
+        const slider = document.getElementById(`servo${i}`);
+        const label = document.getElementById(`servo${i}-val`);
+        slider.value = movimiento.servos[i - 1];
+        label.textContent = movimiento.servos[i - 1];
+      }
+      const servo6Value = movimiento.servos[5];
+      document.getElementById('servo6-val').textContent = servo6Value;
+      const gripperOpenBtn = document.getElementById('gripper-open');
+      const gripperCloseBtn = document.getElementById('gripper-close');
+      if (servo6Value === 90) {
+        gripperOpenBtn.classList.add('active');
+        gripperCloseBtn.classList.remove('active');
+      } else if (servo6Value === 120) {
+        gripperOpenBtn.classList.remove('active');
+        gripperCloseBtn.classList.add('active');
+      }
+      if (window.updateSimulation) window.updateSimulation();
+      updateGripperInfo();
+      fetch('/control_brazo/mover_servos_global', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(movimiento)
+      })
+      .then(response => response.text())
+      .then(resp => console.log(`Movimiento global ejecutado: ${resp}`))
+      .catch(err => console.error(`Error al ejecutar movimiento global: ${err}`));
+    };
+    const cargarMovimientosGuardados = () => {
       fetch("/obtener_movimientos")
-        .then((response) => response.json())
-        .then((movimientos) => {
+        .then(response => response.json())
+        .then(movs => {
           const movementsList = document.getElementById("movements-list");
-          movementsList.innerHTML = movimientos
-            .map(
-              (mov) =>
-                `<li>${mov} 
-                  <button class="btn-delete" onclick="borrarMovimiento('${mov}')">Borrar</button> 
-                  <button class="btn-primary" onclick="ejecutarMovimiento('${mov}')">Ejecutar</button>
-                </li>`
-            )
-            .join("");
+          movementsList.innerHTML = movs.length ? movs.map(mov => `
+            <li>
+              <span>${mov}</span>
+              <button style="background-color: #2196f3; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" onclick="cargarMovimiento('${mov}')">Cargar</button>
+              <button style="background-color: #4caf50; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" onclick="ejecutarMovimientoGuardado('${mov}')">Ejecutar</button>
+              <button style="background-color: #ff6b6b; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" onclick="borrarMovimiento('${mov}')">Borrar</button>
+            </li>
+          `).join("") : "<p>No hay movimientos guardados.</p>";
         })
-        .catch((err) => logCommand(`Error al cargar movimientos: ${err}`));
-    }
-
-    // Borrar movimiento del servidor
-    function borrarMovimiento(nombre) {
+        .catch(error => console.error("Error al cargar movimientos:", error));
+    };
+    const borrarMovimiento = nombre => {
       fetch(`/borrar_movimiento/${nombre}`, { method: "DELETE" })
-        .then((response) => response.text())
-        .then((data) => {
-          alert(data);
+        .then(response => response.text())
+        .then(resp => {
+          alert(resp);
           cargarMovimientosGuardados();
         })
-        .catch((err) => logCommand(`Error al borrar movimiento: ${err}`));
-    }
-
-    // Ejecutar movimiento en el brazo
-    function ejecutarMovimiento(nombre) {
-      fetch(`/ejecutar_movimiento/${nombre}`, { method: "POST" })
-        .then((response) => response.text())
-        .then((data) => {
-          alert(data);
-          logCommand(`Movimiento ejecutado: ${nombre}`);
+        .catch(err => console.error(`Error al borrar movimiento: ${err}`));
+    };
+    const quitarMovimientoCargado = () => {
+      document.getElementById("loaded-movement-list").innerHTML = "";
+      console.log("Movimiento cargado eliminado.");
+    };
+    const cargarMovimiento = nombre => {
+      fetch(`/cargar_movimiento/${nombre}`, { method: "POST" })
+        .then(response => response.json())
+        .then(data => {
+          movimientosCargados = data;
+          const loadedMovementList = document.getElementById("loaded-movement-list");
+          loadedMovementList.innerHTML = data.map((pos, index) => `
+            <li>
+              Posición ${index + 1}: Velocidad: ${pos.velocidad}, Servos: [${pos.servos.join(", ")}]
+              <button onclick="irAposicion(${index})">IrAposicion</button>
+            </li>
+          `).join("");
         })
-        .catch((err) => logCommand(`Error al ejecutar movimiento: ${err}`));
+        .catch(err => {
+          alert(`Error: ${err.message}`);
+          console.log(`Error al cargar movimiento: ${err.message}`);
+        });
+    };
+    window.ejecutarMovimientoGuardado = nombreMovimiento => {
+      fetch(`/ejecutar_movimiento/${nombreMovimiento}`, { method: "POST" })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert(`Error: ${data.error}`);
+          } else {
+            alert(data.mensaje);
+          }
+        })
+        .catch(err => console.error("Error al ejecutar el movimiento:", err));
+    };
+
+    // Funciones para gestionar puntos (gripper)
+    const viewSavedPoint = pointName => {
+      fetch(`/ver_punto/${pointName}`)
+        .then(response => response.text())
+        .then(data => alert(`📍 Punto: ${pointName}\n\n${data}`))
+        .catch(error => console.error("Error al ver el punto guardado:", error));
+    };
+    const deleteSavedPoint = pointName => {
+      fetch(`/borrar_punto/${pointName}`, { method: "DELETE" })
+        .then(response => response.text())
+        .then(message => {
+          alert(message);
+          loadSavedPoints();
+        })
+        .catch(error => console.error("Error al borrar el punto:", error));
+    };
+    const loadSavedPoints = () => {
+      fetch("/listar_puntos")
+        .then(response => response.json())
+        .then(data => {
+          const pointsList = document.getElementById("saved-points-list");
+          pointsList.innerHTML = data.length ? data.map(pointName => `
+            <li style="margin-bottom: 10px;">
+              <span>${pointName}</span>
+              <button style="background-color: #4caf50; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-left: 10px;" onclick="viewSavedPoint('${pointName}')">Ver</button>
+              <button style="background-color: #ff6b6b; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-left: 5px;" onclick="deleteSavedPoint('${pointName}')">Borrar</button>
+            </li>
+          `).join("") : "<p>No hay puntos guardados.</p>";
+        })
+        .catch(error => console.error("Error al cargar puntos guardados:", error));
+    };
+
+    // Función para mostrar/ocultar la nube de puntos del área de trabajo
+    function toggleAreaTrabajo() {
+      if (window.areaTrabajoPoints) {
+        window.robotScene.remove(window.areaTrabajoPoints);
+        window.areaTrabajoPoints = null;
+      } else {
+        fetch("/obtener_area_trabajo")
+          .then(response => response.json())
+          .then(data => {
+            const points = data.points;
+            const positions = [];
+            points.forEach(p => {
+              positions.push(p.x, p.y, p.z);
+            });
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({ color: 0xffff00, size: 0.01 });
+            const pointCloud = new THREE.Points(geometry, material);
+            window.robotScene.add(pointCloud);
+            window.areaTrabajoPoints = pointCloud;
+          })
+          .catch(err => console.error("Error al obtener el área de trabajo:", err));
+      }
     }
 
-    // Cargar movimientos al iniciar
-    window.addEventListener("DOMContentLoaded", cargarMovimientosGuardados);
+    // Inicializar al cargar la página
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log("DOM completamente cargado");
 
-
-    // ========== FUNCIONES DE LOG Y DE ESTADO ==========
-        /*******************
-        *   DEBOUNCE JS   *
-        *******************/
-    function debounce(func, delay) {
-      let timer;
-      return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          func(...args);
-        }, delay);
-      };
-    }    
-    // Agrega texto al terminal
-    function logCommand(message) {
-      const terminal = document.getElementById("terminal");
-      if (!terminal) return;
-      terminal.textContent += message + "\n";
-      terminal.scrollTop = terminal.scrollHeight; // auto-scroll
-    }
-
-    // Verificar estado de la conexión serial
-    function checkConnectionStatus() {
       fetch('/status_connection')
         .then(r => r.json())
         .then(data => {
           const statusText = document.getElementById("connection-status-text");
-          if (data.connected) {
-            statusText.textContent = `Conexión establecida en puerto ${data.port}`;
-          } else {
-            statusText.textContent = "No hay conexión serial activa.";
-          }
+          statusText.textContent = data.connected ? `Conexión establecida en puerto ${data.port}` : "No hay conexión serial activa.";
         })
         .catch(err => {
-          console.error("Error chequeando conexión:", err);
+          console.error("Error verificando conexión:", err);
+          document.getElementById("connection-status-text").textContent = "Error al verificar la conexión";
         });
-    }
 
-    // ========== FUNCIÓN PARA ENVIAR MOVIMIENTO ==========
-    function enviarMovimiento(servoNum, angulo) {
-      const velocidad = document.getElementById('velocidad').value;
-      const url = `/control_brazo/mover_servo/${servoNum}/${angulo}/${velocidad}`;
+      setupSliderEvents();
+      setupHomeButton();
+      loadSavedPoints();
+      cargarMovimientosGuardados();
+      cargarEstadoGuardado();
 
-      // Loguear el comando antes de enviarlo
-      logCommand(`Enviando: servo ${servoNum} => ${angulo}°, vel ${velocidad}`);
+      initThreeSimulation();
 
-      fetch(url, { method: 'POST' })
-        .then(response => response.text())
-        .then(data => {
-          logCommand(`Respuesta: ${data}`);
-        })
-        .catch(err => {
-          logCommand("Error al enviar movimiento: " + err);
-        });
-    }
-
-    /************************************************
-     * Crear una versión DEBOUNCED de enviarMovimiento
-     ************************************************/
-
-    const enviarMovimientoDebounced = debounce((servoNum, angulo) => {
-      enviarMovimiento(servoNum, angulo);
-    }, 100); // Ajustar 200 ms al gusto (ej. 150, 300)
-
-
-    // ========== CONFIGURAR EVENTOS AL CARGAR LA PÁGINA ==========
-    window.addEventListener('DOMContentLoaded', () => {
-      // Chequeamos el estado de la conexión al iniciar
-      checkConnectionStatus();
-
-      // Configurar cada slider de servo
-      for (let i = 1; i <= 6; i++) {
-        const slider = document.getElementById(`servo${i}`);
-        if (slider) {
-          // Cada vez que el slider cambie (oninput),
-          // llamamos a la función debounced
-          slider.addEventListener('input', () => {
-            const angulo = slider.value;
-            enviarMovimientoDebounced(i, angulo);
-          });
-        }
-      }
-
-      // Botón HOME => Todos los servos a 90
-      const homeBtn = document.getElementById('btn-home');
-      homeBtn.addEventListener('click', () => {
-        for (let i = 1; i <= 6; i++) {
-          const slider = document.getElementById(`servo${i}`);
-          slider.value = 90;
-          document.getElementById(`servo${i}-val`).textContent = "90";
-          enviarMovimiento(i, 90);
-        }
-      });
+      document.getElementById("btn-area-trabajo").addEventListener("click", toggleAreaTrabajo);
     });
+
+    // =================== Simulación del Brazo Industrial ===================
+    function initThreeSimulation() {
+      const container = document.getElementById('robot-simulation');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x555555);
+      window.robotScene = scene;
+
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.01, 50);
+      camera.position.set(1.2, 1.2, 1.2);
+      camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(width, height);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0.5, 0);
+      controls.update();
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
+      hemiLight.position.set(0, 20, 0);
+      scene.add(hemiLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      directionalLight.position.set(3, 10, 5);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.camera.near = 0.1;
+      directionalLight.shadow.camera.far = 20;
+      directionalLight.shadow.camera.left = -1;
+      directionalLight.shadow.camera.right = 1;
+      directionalLight.shadow.camera.top = 1;
+      directionalLight.shadow.camera.bottom = -1;
+      scene.add(directionalLight);
+
+      const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+      const groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), groundMaterial);
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.receiveShadow = true;
+      scene.add(groundMesh);
+
+      const gridHelper = new THREE.GridHelper(20, 40, 0x333333, 0x444444);
+      gridHelper.position.y = 0.001;
+      scene.add(gridHelper);
+
+      const refGroup = new THREE.Group();
+      refGroup.position.set(-0.5, 0.5, 0.5);
+      const arrowLength = 0.2;
+      const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0,0,0), arrowLength, 0xff0000);
+      const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0,0,0), arrowLength, 0x00ff00);
+      const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0,0,0), arrowLength, 0x0000ff);
+      refGroup.add(arrowX);
+      refGroup.add(arrowY);
+      refGroup.add(arrowZ);
+      scene.add(refGroup);
+
+      const robotJoints = createEnhancedRobot(scene);
+
+      function updateRobot() {
+        robotJoints.baseGroup.rotation.y = THREE.Math.degToRad(currentServoValues[0] - 90);
+        robotJoints.shoulderGroup.rotation.x = THREE.Math.degToRad(currentServoValues[1] - 90);
+        robotJoints.elbowGroup.rotation.x = THREE.Math.degToRad(currentServoValues[2] - 90);
+        robotJoints.wristGroup.rotation.x = -THREE.Math.degToRad(currentServoValues[3] - 90);
+        robotJoints.gripperGroup.rotation.y = THREE.Math.degToRad(currentServoValues[4] - 90);
+        const offsetOpen = 0.03;
+        const servoValue = currentServoValues[5];
+        const offset = offsetOpen * (180 - servoValue) / 90;
+        robotJoints.gripperRight.position.x = offset;
+        robotJoints.gripperLeft.position.x  = -offset;
+      }
+      window.updateSimulation = updateRobot;
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        updateRobot();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+        const newWidth = container.clientWidth;
+        const newHeight = container.clientHeight;
+        camera.aspect = newWidth / newHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(newWidth, newHeight);
+      });
+    }
+
+    function createEnhancedRobot(scene) {
+      const mm = 0.001;
+      const dims = {
+        baseHeight: 0.1,
+        baseDiameter: 0.12,
+        shoulderLength: 0.15,
+        shoulderThickness: 0.06,
+        elbowLength: 0.14,
+        elbowThickness: 0.06,
+        wristLength: 0.13,
+        wristThickness: 0.05
+      };
+
+      const metalMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x777777,
+        metalness: 0.8,
+        roughness: 0.3,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.1
+      });
+      const accentMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x2194F3,
+        metalness: 0.7,
+        roughness: 0.3,
+        clearcoat: 0.3
+      });
+      const jointMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffd700,
+        metalness: 0.9,
+        roughness: 0.1
+      });
+
+      const robot = new THREE.Group();
+
+      const baseGeo = new THREE.CylinderGeometry(dims.baseDiameter / 2, dims.baseDiameter / 2, dims.baseHeight, 32);
+      const baseMesh = new THREE.Mesh(baseGeo, metalMaterial);
+      baseMesh.castShadow = true;
+      baseMesh.receiveShadow = true;
+      baseMesh.position.y = dims.baseHeight / 2;
+      const baseGroup = new THREE.Group();
+      baseGroup.add(baseMesh);
+      const baseJointGeo = new THREE.SphereGeometry(0.01, 32, 32);
+      const baseJoint = new THREE.Mesh(baseJointGeo, jointMaterial);
+      baseJoint.position.y = dims.baseHeight;
+      baseGroup.add(baseJoint);
+      robot.add(baseGroup);
+
+      const shoulderGroup = new THREE.Group();
+      shoulderGroup.position.y = dims.baseHeight;
+      baseGroup.add(shoulderGroup);
+      const shoulderGeo = new THREE.BoxGeometry(dims.shoulderThickness, dims.shoulderLength, dims.shoulderThickness);
+      const shoulderMesh = new THREE.Mesh(shoulderGeo, accentMaterial);
+      shoulderMesh.castShadow = true;
+      shoulderMesh.receiveShadow = true;
+      shoulderMesh.position.y = dims.shoulderLength / 2;
+      shoulderGroup.add(shoulderMesh);
+      const shoulderJoint = new THREE.Mesh(baseJointGeo, jointMaterial);
+      shoulderJoint.position.y = dims.shoulderLength;
+      shoulderGroup.add(shoulderJoint);
+
+      const elbowGroup = new THREE.Group();
+      elbowGroup.position.y = dims.shoulderLength;
+      shoulderGroup.add(elbowGroup);
+      const elbowGeo = new THREE.BoxGeometry(dims.elbowThickness, dims.elbowLength, dims.elbowThickness);
+      const elbowMesh = new THREE.Mesh(elbowGeo, metalMaterial);
+      elbowMesh.castShadow = true;
+      elbowMesh.receiveShadow = true;
+      elbowMesh.position.y = dims.elbowLength / 2;
+      elbowGroup.add(elbowMesh);
+      const elbowJoint = new THREE.Mesh(baseJointGeo, jointMaterial);
+      elbowJoint.position.y = dims.elbowLength;
+      elbowGroup.add(elbowJoint);
+
+      const wristGroup = new THREE.Group();
+      wristGroup.position.y = dims.elbowLength;
+      elbowGroup.add(wristGroup);
+      const wristGeo = new THREE.BoxGeometry(dims.wristThickness, dims.wristLength, dims.wristThickness);
+      const wristMesh = new THREE.Mesh(wristGeo, accentMaterial);
+      wristMesh.castShadow = true;
+      wristMesh.receiveShadow = true;
+      wristMesh.position.y = dims.wristLength / 2;
+      wristGroup.add(wristMesh);
+      const wristJoint = new THREE.Mesh(baseJointGeo, jointMaterial);
+      wristJoint.position.y = dims.wristLength;
+      wristGroup.add(wristJoint);
+
+      const gripperBaseGeo = new THREE.BoxGeometry(0.06, 0.02, 0.06);
+      const gripperBase = new THREE.Mesh(gripperBaseGeo, metalMaterial);
+      gripperBase.castShadow = true;
+      gripperBase.receiveShadow = true;
+      gripperBase.position.y = gripperBaseGeo.parameters.height / 2;
+      wristJoint.add(gripperBase);
+
+      const gripperGroup = new THREE.Group();
+      gripperGroup.position.y = gripperBaseGeo.parameters.height / 2;
+      gripperBase.add(gripperGroup);
+
+      const gripperWidth  = 0.04;
+      const gripperHeight = 0.08;
+      const gripperDepth  = 0.03;
+      const jawGeo = new THREE.BoxGeometry(gripperWidth, gripperHeight, gripperDepth);
+      jawGeo.translate(0, gripperHeight / 2, 0);
+
+      const gripperMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xFF5722,
+        metalness: 0.8,
+        roughness: 0.3,
+        clearcoat: 0.4
+      });
+
+      const gripperRight = new THREE.Mesh(jawGeo, gripperMaterial);
+      gripperRight.castShadow = true;
+      gripperRight.receiveShadow = true;
+      gripperRight.position.set(0.03, 0, 0);
+      gripperGroup.add(gripperRight);
+
+      const gripperLeft = new THREE.Mesh(jawGeo, gripperMaterial);
+      gripperLeft.castShadow = true;
+      gripperLeft.receiveShadow = true;
+      gripperLeft.position.set(-0.03, 0, 0);
+      gripperGroup.add(gripperLeft);
+
+      robot.traverse(child => {
+        if (child.isMesh) child.castShadow = true;
+      });
+      scene.add(robot);
+
+      return {
+        baseGroup,
+        shoulderGroup,
+        elbowGroup,
+        wristGroup,
+        wristJoint,
+        gripperGroup,
+        gripperRight,
+        gripperLeft
+      };
+    }
+    // =================== Fin Simulación del Brazo Industrial ===================
   </script>
 </body>
 </html>

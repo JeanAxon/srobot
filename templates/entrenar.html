@@ -1,40 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guía de Entrenamiento</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía de Entrenamiento</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    .steps-container {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .steps-container ol {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+
+    .steps-container li {
+      counter-increment: step-counter;
+      margin-bottom: 15px;
+      position: relative;
+      padding-left: 40px;
+    }
+
+    .steps-container li::before {
+      content: counter(step-counter) ".";
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .steps-container li a {
+      margin-left: 20px;
+    }
+
+    .left-space {
+      width: 20px; 
+    }
+  </style>
 </head>
+
 <body>
-    <header>
-        <h1>Guía de Entrenamiento</h1>
-    </header>
+  <header class="header">
+    <a href="{{ url_for('opciones') }}" class="btn-back">
+      <i class="fas fa-arrow-left"></i> Regresar
+    </a>
+    <div class="left-space"></div>
+    <h1 class="main-title">Guía de Entrenamiento</h1>
+    <div class="empty-space"></div> 
+  </header>
 
-    <main>
-        <!-- Instrucciones de entrenamiento -->
-        <div class="steps-container">
-            <ol>
-                <li>Tomar imágenes de los objetos a entrenar
-                    <a href="{{ url_for('tomar_imagen') }}" class="btn-secondary">Tomar imágenes</a>
-                </li>
-                <li>Subir las imágenes en 
-                    <a href="https://teachablemachine.withgoogle.com/" class="btn-secondary" target="_blank">Teachable Machine</a>
-                </li>
-                <li>Generar y descargar el modelo desde Teachable Machine.</li>
-                <li>Subir el modelo generado
-                    <a href="{{ url_for('subir_modelo') }}" class="btn-secondary">Subir modelo</a>
-                </li>
-            </ol>
-        </div>
+  <main class="main-content">
+    <section class="section">
+      <h2 class="section-title">Pasos</h2>
+      <div class="steps-container">
+        <ol>
+          <li>Tomar imágenes de los objetos a entrenar
+            <a href="{{ url_for('tomar_imagen') }}" class="btn-secondary">Tomar imágenes</a>
+          </li>
+          <li>Subir las imágenes en
+            <a href="https://teachablemachine.withgoogle.com/" class="btn-secondary" target="_blank">Teachable
+              Machine</a>
+          </li>
+          <li>Generar y descargar el modelo desde Teachable Machine.</li>
+          <li>Subir el modelo generado
+            <a href="{{ url_for('subir_modelo') }}" class="btn-secondary">Subir modelo</a>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </main>
 
-        <div class="button-container">
-            <button class="btn-back" onclick="window.location.href='{{ url_for('opciones') }}'">Volver</button>
-        </div>
-    </main>
-
-    <footer>
-        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
-    </footer>
+  <footer>
+    <p>&copy; 2025 MODS MCT - Sistemas de Control</p>
+  </footer>
 </body>
 </html>

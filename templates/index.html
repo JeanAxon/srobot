@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,10 +7,23 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <header>
-        <h1>Módulo Didáctico</h1>
-        <h2>Selección de Objetos por Color y Morfología</h2>
+
+    <header style="
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        text-align: center; 
+        background: linear-gradient(135deg, #004aad, #00aaff); 
+        color: white; 
+        padding: 15px; 
+        backdrop-filter: blur(10px);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);">
+        
+        <h1 style="margin-bottom: 5px;">Módulo Didáctico</h1>
+        <h3 style="margin-top: 0px;">Selección de Objetos por Color y Morfología</h3>
     </header>
+
+    
 
     <main>
         <div class="welcome-container">
@@ -20,7 +33,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+        <p>&copy; 2025 MODS MCT - Sistemas de Control</p>
     </footer>
 </body>
 </html>

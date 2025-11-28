@@ -6,54 +6,102 @@
     <title>Configurar Lógica</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
-        /* Estilo global */
-        body {
-            font-family: Arial, sans-serif;
+        /* General styles */
+        html, body {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
+        }
+
+        *, *::before, *::after {
+            box-sizing: inherit;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: #f4f8fb;
+            color: #333;
             display: flex;
             flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
             min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
         }
 
+        /* Header styles */
         header {
-            background-color: #003366;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            background-color: #0066cc;
             color: white;
-            text-align: center;
-            padding: 1rem;
+            padding: 10px 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
         }
 
+        .btn-back {
+            display: flex; 
+            align-items: center; 
+            background-color: #ff6b6b;
+            color: white;
+            padding: 10px 20px;
+            font-size: 18px; 
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-back:hover {
+            background-color: #e63946;
+        }
+
+        .btn-back i {
+            margin-right: 8px;
+            font-size: 24px;
+        }
+
+        .main-title {
+            margin: 0 auto;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        /* Main content styles */
         main {
             flex: 1;
-            padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 2rem;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 20px;
         }
 
-        footer {
-            background-color: #003366;
-            color: white;
-            text-align: center;
-            padding: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        /* Sección principal */
+        /* Section styles */
         section {
-            background: #f9f9f9;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 900px;
+            width: 90%;
         }
 
         section h2 {
             margin-top: 0;
-            color: #003366;
+            color: #0066cc;
         }
 
-        /* Contenedores flexibles */
+        /* Rule container styles */
         .rule {
             display: grid;
             grid-template-columns: auto 1fr auto 1fr auto 1fr;
@@ -65,51 +113,48 @@
         .dropdown {
             width: 100%;
             padding: 0.5rem;
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
             border-radius: 4px;
         }
 
+        /* Buttons styles */
         .buttons-container {
             display: flex;
             gap: 1rem;
             justify-content: center;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
         }
 
         .btn-primary {
-            background-color: #003366;
+            background-color: #0066cc;
             color: white;
             padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            text-align: center;
+            transition: background-color 0.3s ease;
         }
 
         .btn-primary:hover {
-            background-color: #0055aa;
+            background-color: #004a99;
         }
 
         .btn-secondary {
-            background-color: #e6e6e6;
-            color: #003366;
+            background-color: #f4a261;
+            color: white;
             padding: 0.75rem 1.5rem;
-            border: 1px solid #003366;
-            border-radius: 4px;
+            border: none;
+            border-radius: 6px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
         .btn-secondary:hover {
-            background-color: #cccccc;
+            background-color: #e76f51;
         }
 
-        .back-container {
-            text-align: center;
-        }
-
-        .back-container a {
-            text-decoration: none;
-        }
-
+        /* Rules list styles */
         #rules-list ul {
             list-style-type: none;
             padding: 0;
@@ -122,12 +167,37 @@
             border-radius: 4px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
         #rules-list ul li span {
             font-weight: bold;
+            width: 100%;
+            text-align: left;
         }
 
+        .btn-edit, .btn-delete {
+            background-color: transparent;
+            color: #0066cc;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .btn-edit:hover, .btn-delete:hover {
+            color: #004a99;
+        }
+
+        /* Footer styles */
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        /* Responsive design */
         @media (max-width: 768px) {
             .rule {
                 grid-template-columns: 1fr;
@@ -135,66 +205,75 @@
 
             .btn-primary, .btn-secondary {
                 width: 100%;
+                margin: 0.5rem 0;
+            }
+
+            .buttons-container {
+                flex-direction: column;
+            }
+
+            #rules-list ul li {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
             }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Configurar Lógica</h1>
+        <a href="{{ url_for('opciones') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Regresar
+        </a>
+        <h1 class="main-title">Configurar Lógica</h1>
     </header>
 
     <main>
         <!-- Configuración de lógica -->
         <section id="logic-configuration">
-            <h2>Reglas de Lógica</h2>
-            <p>Configure las reglas para el reconocimiento de objetos y movimientos del brazo:</p>
-            
-            <!-- Contenedor de reglas -->
-            <div id="rules-container">
-                <div class="rule">
-                    <label for="shape">Si:</label>
-                    <select id="shape" class="dropdown">
-                        {% for label in form_labels %}
-                            <option value="{{ label }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
+        <h2>Reglas de Lógica</h2>
+        <p>Configure las reglas para el reconocimiento de objetos y movimientos del brazo:</p>
+        
+        <!-- Contenedor de reglas -->
+        <div id="rules-container">
+            <div class="rule">
+                <label for="shape">Si:</label>
+                <select id="shape" class="dropdown">
+                    {% for label in form_labels %}
+                        <option value="{{ label }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
 
-                    <label for="color">y:</label>
-                    <select id="color" class="dropdown">
-                        {% for label in color_labels %}
-                            <option value="{{ label }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                <label for="color">y:</label>
+                <select id="color" class="dropdown">
+                    {% for label in color_labels %}
+                        <option value="{{ label }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
 
-                    <label for="movement">entonces:</label>
-                    <select id="movement" class="dropdown">
-                        {% for movement in movimientos %}
-                            <option value="{{ movement }}">{{ movement }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+                <label for="movement">entonces:</label>
+                <select id="movement" class="dropdown">
+                    {% for movement in movimientos %}
+                        <option value="{{ movement }}">{{ movement }}</option>
+                    {% endfor %}
+                </select>
             </div>
+        </div>
 
-            <!-- Botones de interacción -->
-            <div class="buttons-container">
-                <button id="add-rule-btn" class="btn-secondary">Añadir Regla</button>
-                <button id="save-rules-btn" class="btn-primary">Guardar Configuración</button>
-            </div>
+        <!-- Botones de interacción -->
+        <div class="buttons-container">
+            <button id="add-rule-btn" class="btn-secondary">Añadir Regla</button>
+            <button id="save-rules-btn" class="btn-primary">Guardar Configuración</button>
+        </div>
         </section>
 
         <!-- Lista de reglas configuradas -->
         <section id="rules-list">
-            <h2>Reglas Configuradas</h2>
-            <ul id="configured-rules">
-                <!-- Aquí se mostrarán las reglas configuradas dinámicamente -->
-            </ul>
+        <h2>Reglas Configuradas</h2>
+        <ul id="configured-rules">
+            <!-- Aquí se mostrarán las reglas configuradas dinámicamente -->
+        </ul>
         </section>
-
-        <!-- Botón para regresar -->
-        <div class="back-container">
-            <a href="{{ url_for('opciones') }}" class="btn-primary">Regresar</a>
-        </div>
     </main>
 
     <footer>
@@ -202,6 +281,7 @@
     </footer>
 
     <script>
+        let nextRuleId = 1; // Variable global para asignar ID únicos a las reglas
         const configuredRules = [];
         const configuredRulesList = document.getElementById('configured-rules');
 
@@ -210,27 +290,167 @@
             const shape = document.getElementById('shape').value;
             const color = document.getElementById('color').value;
             const movement = document.getElementById('movement').value;
+            const ruleId = nextRuleId++;
 
-            const rule = { shape, color, movement };
+            const rule = { id: ruleId, shape, color, movement };
             configuredRules.push(rule);
 
             // Añadir a la lista visual
             const listItem = document.createElement('li');
-            listItem.innerHTML = `<span>Si ${shape} y ${color}, entonces ${movement}</span>`;
+            listItem.dataset.ruleId = ruleId;
+            listItem.dataset.shape = shape;
+            listItem.dataset.color = color;
+            listItem.dataset.movement = movement;
+            listItem.innerHTML = `
+                <span>Si ${shape} y ${color}, entonces ${movement}</span>
+                <button class="btn-edit" data-rule-id="${ruleId}">Editar</button>
+                <button class="btn-delete" data-rule-id="${ruleId}">Eliminar</button>
+            `;
             configuredRulesList.appendChild(listItem);
         });
 
         // Guardar las reglas
         document.getElementById('save-rules-btn').addEventListener('click', () => {
+            if (configuredRules.length === 0) {
+                alert('No hay reglas para guardar.');
+                return;
+            }
+
             fetch('/guardar_logica', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(configuredRules)
             })
-                .then(response => response.text())
-                .then(data => alert(data))
-                .catch(error => console.error('Error al guardar las reglas:', error));
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+            })
+            .catch(error => {
+                console.error('Error al guardar las reglas:', error);
+                alert('Error al guardar las reglas. Inténtalo de nuevo.');
+            });
         });
+
+        // Evento delegado para botones Editar y Eliminar
+        configuredRulesList.addEventListener('click', (event) => {
+            const ruleElement = event.target.closest('li');
+
+            if (event.target.classList.contains('btn-edit')) {
+                handleEditRule(ruleElement);
+            } else if (event.target.classList.contains('btn-delete')) {
+                handleDeleteRule(ruleElement);
+            }
+        });
+
+        // Función para eliminar una regla
+        function handleDeleteRule(ruleElement) {
+            const ruleId = ruleElement.dataset.ruleId;
+            const index = configuredRules.findIndex(rule => rule.id === parseInt(ruleId));
+
+            if (index !== -1) {
+                configuredRules.splice(index, 1);
+                ruleElement.remove();
+                // Enviar solicitud DELETE al servidor aquí
+            }
+        }
+
+        // Función para editar una regla
+        function handleEditRule(ruleElement) {
+            const ruleId = ruleElement.dataset.ruleId;
+            const currentShape = ruleElement.dataset.shape;
+            const currentColor = ruleElement.dataset.color;
+            const currentMovement = ruleElement.dataset.movement;
+
+            // Crear un contenedor para el formulario de edición
+            const editContainer = document.createElement('div');
+            editContainer.className = 'rule-edit';
+
+            // Formulario de edición
+            const form = document.createElement('form');
+            form.innerHTML = `
+                <label>Forma:</label>
+                <select id="edit-shape" class="dropdown"></select>
+                <label>Color:</label>
+                <select id="edit-color" class="dropdown"></select>
+                <label>Movimiento:</label>
+                <select id="edit-movement" class="dropdown"></select>
+                <button class="btn-save" type="button">Guardar</button>
+                <button class="btn-cancel" type="button">Cancelar</button>
+            `;
+
+            // Clonar opciones desde los selectores principales
+            const shapeSelect = document.getElementById('shape');
+            const colorSelect = document.getElementById('color');
+            const movementSelect = document.getElementById('movement');
+
+            const editShape = form.querySelector('#edit-shape');
+            const editColor = form.querySelector('#edit-color');
+            const editMovement = form.querySelector('#edit-movement');
+
+            for (let option of shapeSelect.options) {
+                const clone = option.cloneNode(true);
+                if (clone.value === currentShape) clone.selected = true;
+                editShape.appendChild(clone);
+            }
+
+            for (let option of colorSelect.options) {
+                const clone = option.cloneNode(true);
+                if (clone.value === currentColor) clone.selected = true;
+                editColor.appendChild(clone);
+            }
+
+            for (let option of movementSelect.options) {
+                const clone = option.cloneNode(true);
+                if (clone.value === currentMovement) clone.selected = true;
+                editMovement.appendChild(clone);
+            }
+
+            editContainer.appendChild(form);
+
+            // Reemplazar los elementos originales
+            ruleElement.innerHTML = '';
+            ruleElement.appendChild(editContainer);
+
+            // Eventos para el formulario de edición
+            const saveButton = editContainer.querySelector('.btn-save');
+            const cancelButton = editContainer.querySelector('.btn-cancel');
+
+            saveButton.addEventListener('click', () => {
+                const newShape = editShape.value;
+                const newColor = editColor.value;
+                const newMovement = editMovement.value;
+
+                // Actualizar la regla en configuredRules
+                const index = configuredRules.findIndex(rule => rule.id === parseInt(ruleId));
+                if (index !== -1) {
+                    configuredRules[index].shape = newShape;
+                    configuredRules[index].color = newColor;
+                    configuredRules[index].movement = newMovement;
+
+                    // Actualizar los datos en la lista
+                    ruleElement.dataset.shape = newShape;
+                    ruleElement.dataset.color = newColor;
+                    ruleElement.dataset.movement = newMovement;
+
+                    // Restaurar la vista
+                    ruleElement.innerHTML = `
+                        <span>Si ${newShape} y ${newColor}, entonces ${newMovement}</span>
+                        <button class="btn-edit" data-rule-id="${ruleId}">Editar</button>
+                        <button class="btn-delete" data-rule-id="${ruleId}">Eliminar</button>
+                    `;
+                }
+                // Enviar solicitud PATCH al servidor aquí
+            });
+
+            cancelButton.addEventListener('click', () => {
+                // Restaurar la vista
+                ruleElement.innerHTML = `
+                    <span>Si ${currentShape} y ${currentColor}, entonces ${currentMovement}</span>
+                    <button class="btn-edit" data-rule-id="${ruleId}">Editar</button>
+                    <button class="btn-delete" data-rule-id="${ruleId}">Eliminar</button>
+                `;
+            });
+        }
     </script>
 </body>
 </html>

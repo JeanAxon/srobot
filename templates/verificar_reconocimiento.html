@@ -1,29 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificar Reconocimiento</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar Reconocimiento</title>
+  <!-- Archivo CSS global -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <!-- Archivo CSS específico -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='configurar_movimientos.css') }}">
 </head>
 <body>
-    <header>
-        <h1>Verificación de Reconocimiento</h1>
-    </header>
+  <!-- Encabezado con el mismo tamaño y estilos que en Configurar Movimientos -->
+  <header class="header-configurar">
+    <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
+    <h1>Verificación de Reconocimiento</h1>
+    <div class="connection-status">
+      <p id="connection-status-text">Verificando conexión...</p>
+    </div>
+    <div id="feedback-message"></div>
+  </header>
 
-    <main>
-        <div class="camera-container">
-            <!-- Video en vivo de la cámara con reconocimiento -->
-            <img id="camera-feed" src="{{ url_for('video_feed') }}" alt="Cámara en vivo">
-        </div>
+  <!-- Contenedor principal -->
+  <main class="config-container">
+    <!-- Sección de la cámara -->
+    <div class="camera-container" style="width: 100%; text-align: center; padding: 1rem; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <img id="camera-feed" src="{{ url_for('video_feed') }}" alt="Cámara en vivo" style="max-width: 100%; border-radius: 8px;">
+    </div>
+  </main>
 
-        <div class="back-container">
-            <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
-        </div>
-    </main>
+  <footer style="text-align: center; padding: 1rem 0; background-color: #f5f5f5;">
+    <p>&copy; 2025 Sistema de Control - MODS MCT</p>
+  </footer>
 
-    <footer>
-        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
-    </footer>
+  <!-- Script para actualizar el estado de conexión -->
+  <script>
+    // Función para obtener el estado de conexión desde el backend
+    fetch("{{ url_for('status_connection') }}")
+      .then(response => response.json())
+      .then(data => {
+        const statusText = document.getElementById("connection-status-text");
+        if (data.connected) {
+          statusText.textContent = `Conexión establecida en puerto ${data.port}`;
+        } else {
+          statusText.textContent = "No hay conexión serial activa.";
+        }
+      })
+      .catch(err => {
+        document.getElementById("connection-status-text").textContent = "Error al verificar la conexión";
+        console.error("Error al obtener estado de conexión:", err);
+      });
+  </script>
 </body>
 </html>

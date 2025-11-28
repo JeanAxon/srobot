@@ -5,39 +5,209 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subir Modelo</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        /* General styles */
+        html, body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        *, *::before, *::after {
+            box-sizing: inherit;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: #f4f8fb;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Header styles */
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            background-color: #0066cc;
+            color: white;
+            padding: 10px 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn-back {
+            display: flex; 
+            align-items: center; 
+            background-color: #ff6b6b;
+            color: white;
+            padding: 10px 20px;
+            font-size: 18px; 
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-back:hover {
+            background-color: #e63946;
+        }
+
+        .btn-back i {
+            margin-right: 8px;
+            font-size: 24px;
+        }
+
+        .main-title {
+            margin: 0 auto;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        /* Main content styles */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        /* Form styles */
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .form-group input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .btn-secondary {
+            background-color: #f4a261;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e76f51;
+        }
+
+        /* Model info styles */
+        #model-info {
+            display: none;
+            margin-top: 2rem;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        #model-info h2 {
+            color: #3f51b5;
+            margin-bottom: 1rem;
+        }
+
+        #model-info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #model-info li {
+            margin-bottom: 8px;
+        }
+
+        /* Footer styles */
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .form-group {
+                flex-direction: column;
+            }
+
+            .btn-back i {
+                display: none;
+            }
+
+            .form-container {
+                width: 95%;
+            }
+        }
+    </style>
 </head>
 <body>
     <header>
-        <h1>Subir Modelo Generado</h1>
+        <a href="{{ url_for('entrenar') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Regresar
+        </a>
+        <h1 class="main-title">Subir Modelo Generado</h1>
     </header>
 
     <main>
-        <!-- Formulario para subir dos archivos de modelos -->
-        <form id="model-upload-form" action="/upload_model" method="POST" enctype="multipart/form-data">
-            <label for="form_model">Seleccionar modelo de formas (archivo ZIP):</label>
-            <input type="file" id="form_model" name="form_model" accept=".zip" required>
-            
-            <label for="color_model">Seleccionar modelo de colores (archivo ZIP):</label>
-            <input type="file" id="color_model" name="color_model" accept=".zip" required>
-        
-            <button type="submit" class="btn-secondary">Subir Modelos</button>
-        </form>
-        
-        <div id="model-info" style="display:none;">
-            <h2>Etiquetas del modelo de formas</h2>
-            <ul id="form-labels-list">
-                <!-- Etiquetas de formas -->
-            </ul>
-        
-            <h2>Etiquetas del modelo de colores</h2>
-            <ul id="color-labels-list">
-                <!-- Etiquetas de colores -->
-            </ul>
-        </div>
-        
+        <div class="form-container">
+            <form id="model-upload-form" action="/upload_model" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="form_model">Seleccionar modelo de formas (archivo ZIP):</label>
+                    <input type="file" id="form_model" name="form_model" accept=".zip" required>
+                </div>
 
-        <div class="back-container">
-            <a href="{{ url_for('entrenar') }}" class="btn-back">Volver</a>
+                <div class="form-group">
+                    <label for="color_model">Seleccionar modelo de colores (archivo ZIP):</label>
+                    <input type="file" id="color_model" name="color_model" accept=".zip" required>
+                </div>
+
+                <button type="submit" class="btn-secondary">Subir Modelos</button>
+            </form>
+        </div>
+
+        <div id="model-info">
+            <h2>Etiquetas del modelo de formas</h2>
+            <ul id="form-labels-list"></ul>
+
+            <h2>Etiquetas del modelo de colores</h2>
+            <ul id="color-labels-list"></ul>
         </div>
     </main>
 
@@ -46,41 +216,34 @@
     </footer>
 
     <script>
-        // Este script manejará la visualización de las etiquetas del modelo subido.
         function displayLabels(labels, listId) {
             const labelsList = document.getElementById(listId);
             labelsList.innerHTML = '';
-        
             labels.forEach(label => {
                 const listItem = document.createElement('li');
                 listItem.textContent = label;
                 labelsList.appendChild(listItem);
             });
-        
             document.getElementById('model-info').style.display = 'block';
         }
-        
-        const form = document.getElementById('model-upload-form');
-        form.addEventListener('submit', function(event) {
+
+        document.getElementById('model-upload-form').addEventListener('submit', function(event) {
             event.preventDefault();
-        
-            const formData = new FormData(form);
-        
+            const formData = new FormData(this);
+
             fetch('/upload_model', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())  // Esperar dos listas: formas y colores
+            .then(response => response.json())
             .then(data => {
-                // Mostrar las etiquetas separadamente
                 displayLabels(data.form_labels, 'form-labels-list');
                 displayLabels(data.color_labels, 'color-labels-list');
             })
             .catch(error => {
-                console.error('Error al subir los modelos:', error);
+                console.error('Error:', error);
             });
         });
-        
     </script>
 </body>
 </html>

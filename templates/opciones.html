@@ -1,128 +1,436 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Opciones</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Opciones</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    /* Estilos para el encabezado */
+    .header {
+      display: flex;
+      align-items: center;
+      background-color: #0066cc;
+      color: white;
+      padding: 10px 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      position: relative;
+      width: 100%;
+    }
+    .btn-back {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: white;
+      font-size: 18px;
+    }
+    .btn-back i {
+      margin-right: 8px;
+      font-size: 24px;
+    }
+    .main-title {
+      margin: 0 auto;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .menu-container {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-left: 20px;
+    }
+    /* Estilos para el menú */
+    .menu-item { 
+      position: relative; 
+      width: 100px;
+    }
+    .menu-button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .menu-button:focus {
+      outline: none;
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      background-color: white;
+      color: black;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      display: none;
+      flex-direction: column;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      padding: 12px;
+    }
+    .dropdown-menu.open {
+      display: flex;
+    }
+    .dropdown-menu a,
+    .dropdown-menu button {
+      padding: 15px;
+      text-decoration: none;
+      color: black;
+      font-size: 16px;
+      border: none;
+      background: none;
+      text-align: left;
+      width: 100%;
+      cursor: pointer;
+    }
+    .dropdown-menu a:hover,
+    .dropdown-menu button:hover {
+      background-color: #f0f0f0;
+    }
+    .dropdown-menu p {
+      margin: 10px 0 0;
+      font-size: 14px;
+      color: #333;
+    }
+    /* Estilos para el contenido principal */
+    .main-content {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+    }
+    .section {
+      flex: 1 1 auto;
+      min-width: 300px;
+      max-width: 400px;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .section ul {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+    .section ul li {
+      margin: 5px 0;
+    }
+    /* Media Queries para diseño responsive */
+    @media (orientation: landscape) {
+      .main-content {
+        flex-direction: row;
+      }
+    }
+    @media (orientation: portrait) {
+      .main-content {
+        flex-direction: column;
+      }
+    }
+    @media (max-width: 768px) {
+      .header {
+        flex-wrap: wrap;
+        padding: 10px;
+      }
+      .main-title {
+        order: 2;
+        margin: 10px 0;
+        width: 100%;
+        text-align: center;
+      }
+      .menu-container {
+        order: 3;
+        width: 100%;
+        justify-content: space-evenly;
+      }
+      .btn-back {
+        order: 1;
+      }
+    }
+  </style>
+  <script>
+    // Función para guardar el estado en localStorage
+    function guardarEstado() {
+      const estado = {
+        btnEjecutarVisible: document.getElementById("btnEjecutar").style.display !== "none",
+        btnDetenerVisible: document.getElementById("btnDetener").style.display !== "none",
+        currentAction: document.getElementById("currentAction").innerText,
+        status: document.getElementById("status").innerText,
+        port: document.getElementById("port").innerText
+      };
+      localStorage.setItem("estadoAplicacion", JSON.stringify(estado));
+    }
+
+    // Función para restaurar el estado desde localStorage
+    function restaurarEstado() {
+      const estadoGuardado = localStorage.getItem("estadoAplicacion");
+      if (estadoGuardado) {
+        const estado = JSON.parse(estadoGuardado);
+        document.getElementById("btnEjecutar").style.display = estado.btnEjecutarVisible ? "inline-block" : "none";
+        document.getElementById("btnDetener").style.display = estado.btnDetenerVisible ? "inline-block" : "none";
+        document.getElementById("currentAction").innerText = estado.currentAction;
+        document.getElementById("status").innerText = estado.status;
+        document.getElementById("port").innerText = estado.port;
+      }
+    }
+
+    // Restaurar estado al cargar la página
+    document.addEventListener('DOMContentLoaded', () => {
+      restaurarEstado();
+      const dropdownButtons = document.querySelectorAll('.menu-button');
+      const searchPortsBtn = document.getElementById('search-ports-btn');
+      const portsList = document.getElementById('ports-list');
+      const connectBtn = document.getElementById('connect-btn');
+
+      dropdownButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const menu = button.nextElementSibling;
+          menu.classList.toggle('open');
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        const menus = document.querySelectorAll('.dropdown-menu');
+        menus.forEach(menu => {
+          if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) {
+            menu.classList.remove('open');
+          }
+        });
+      });
+
+      searchPortsBtn.addEventListener('click', () => {
+        fetch('/listar_puertos')
+          .then(response => response.json())
+          .then(ports => {
+            portsList.innerHTML = '';
+            ports.forEach(port => {
+              let option = document.createElement('option');
+              option.value = port;
+              option.text = port;
+              portsList.appendChild(option);
+            });
+            portsList.style.display = 'block';
+            connectBtn.style.display = 'block';
+          });
+      });
+
+      connectBtn.addEventListener('click', () => {
+        const selectedPort = portsList.value;
+        const encodedPort = encodeURIComponent(selectedPort.replace('/dev/', ''));
+        fetch(`/conectar_serial/${encodedPort}`, { method: 'POST' })
+          .then(response => {
+            if (response.ok) return response.text();
+            throw new Error('Error en conexión');
+          })
+          .then(message => alert(message))
+          .catch(error => alert(`Error: ${error.message}`));
+      });
+    });
+
+    function iniciarEjecucion() {
+      Promise.all([
+        fetch('/status_connection').then(r => r.json()),
+        fetch('/status_camera').then(r => r.json()).catch(() => ({ connected: true }))
+      ])
+      .then(([serialStatus, cameraStatus]) => {
+        if (serialStatus.connected && cameraStatus.connected) {
+          fetch('/iniciar_ejecucion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accion: 'iniciar' })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'enviado') {
+              document.getElementById("btnEjecutar").style.display = "none";
+              document.getElementById("btnDetener").style.display = "inline-block";
+              guardarEstado();
+            } else {
+              alert('Error: No se pudo enviar la instrucción de inicio.');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Error al conectarse con el servidor');
+          });
+        } else {
+          let mensaje = '';
+          if (!serialStatus.connected && !cameraStatus.connected) {
+            mensaje = 'Error: No hay conexión serial ni de cámara activa.';
+          } else if (!serialStatus.connected) {
+            mensaje = 'Error: No hay conexión serial activa.';
+          } else if (!cameraStatus.connected) {
+            mensaje = 'Error: La cámara no está conectada.';
+          }
+          alert(mensaje);
+        }
+      })
+      .catch(err => {
+        console.error('Error al obtener estados de conexión:', err);
+        alert('Error al verificar el estado de conexión');
+      });
+    }
+
+    function detenerEjecucion() {
+      fetch('/detener_ejecucion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'detener' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'enviado') {
+          document.getElementById("btnDetener").style.display = "none";
+          document.getElementById("btnEjecutar").style.display = "inline-block";
+          guardarEstado();
+        } else {
+          alert('Error: No se pudo enviar la instrucción de detención.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error al conectarse con el servidor');
+      });
+    }
+
+    // Actualizar logs cada 3 segundos
+    function actualizarLogs() {
+      fetch('/logs')
+        .then(response => response.json())
+        .then(data => {
+          const logs = data.logs.split('\n');
+          const filteredLogs = logs.filter(line => !line.includes('HTTP/1.1'));
+          const lastLog = filteredLogs[filteredLogs.length - 1] || "Esperando acción...";
+          document.getElementById("currentAction").innerText = lastLog;
+          guardarEstado();
+        })
+        .catch(error => console.error('Error al obtener logs:', error));
+    }
+    setInterval(actualizarLogs, 3000);
+
+    // Actualizar estado cada 3 segundos
+    function actualizarEstado() {
+      fetch('/status_connection')
+        .then(response => response.json())
+        .then(data => {
+          const statusSpan = document.getElementById('status');
+          const portSpan = document.getElementById('port');
+          if (data.connected) {
+            statusSpan.textContent = 'Conectado';
+            portSpan.textContent = data.port;
+          } else {
+            statusSpan.textContent = 'Desconectado';
+            portSpan.textContent = 'N/A';
+          }
+          const hmiStatusP = document.getElementById('hmi-status');
+          hmiStatusP.textContent = 'HMI: Desconectado';
+          guardarEstado();
+        })
+        .catch(err => console.error('Error al obtener estado de conexión:', err));
+    }
+    setInterval(actualizarEstado, 3000);
+  </script>
 </head>
 <body>
-    <header>
-        <h1>Opciones del Módulo</h1>
-    </header>
+  <header class="header">
+    <a href="{{ url_for('index') }}" class="btn-back">
+      <i class="fas fa-arrow-left"></i> Regresar
+    </a>
+    <h1 class="main-title">Opciones del Módulo</h1>
+    <div class="menu-container">
+      <div class="menu-item">
+        <button class="menu-button config-button">
+          <i class="fas fa-cogs"></i>
+        </button>
+        <div class="dropdown-menu">
+          <a href="{{ url_for('entrenar') }}">Entrenar</a>
+          <a href="{{ url_for('configurar_movimientos') }}">C. Directa Config. Movs</a>
+          <a href="{{ url_for('configurar_movimientos_CI') }}">C. Inversa Config. Movs</a>
+          <a href="{{ url_for('configurar_logica') }}">Configurar Lógica</a>
+          <a href="{{ url_for('subir_modelo') }}">Subir Modelos</a>
+          <a href="{{ url_for('verificar_reconocimiento') }}">Verificar Reconocimiento</a>
+        </div>
+      </div>
+      <div class="menu-item">
+        <button class="menu-button connection-button">
+          <i class="fas fa-network-wired"></i>
+        </button>
+        <div class="dropdown-menu">
+          <button id="search-ports-btn">Buscar Puertos</button>
+          <select id="ports-list" style="width: 100%; display: none;"></select>
+          <button id="connect-btn" style="display: none;">Conectar</button>
+          <p id="hmi-status">HMI: Desconectado</p>
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <main>
-        <!-- Sección de Conexiones -->
-        <section id="connection-section">
-            <h2>Conexiones</h2>
-            <button class="btn-secondary" id="search-ports-btn">Buscar Puertos</button>
-            <select id="ports-list" class="btn-secondary" style="display:none;"></select>
-            <button class="btn-primary" id="connect-btn" style="display:none;">Conectar</button>
-            <p id="connection-status" style="display:none;"></p>
-        </section>
+  <main class="main-content">
+    <section class="section">
+      <h2 class="section-title">Estado de Conexión</h2>
+      <p>Estado: <span id="status">Desconectado</span></p>
+      <p>Puerto: <span id="port">N/A</span></p>
+    </section>
 
-        <!-- Sección de Modelos -->
-        <section id="model-info" style="display:none;">
-            <h2>Objetos Entrenados</h2>
-            <ul id="labels-list">
-                {% if labels %}
-                    {% for label in labels %}
-                        <li>{{ label }}</li>
-                    {% endfor %}
-                {% endif %}
-            </ul>
-        </section>
+    <section class="section actions-section">
+      <h2 class="section-title">Acciones</h2>
+      <button id="btnEjecutar" class="btn-primary" style="background-color: green;" onclick="iniciarEjecucion()">
+        Ejecutar
+      </button>
+      <button id="btnDetener" class="btn-primary" style="background-color: red; display: none;" onclick="detenerEjecucion()">
+        Detener
+      </button>
+      <h3>Estado Actual</h3>
+      <div id="currentAction" style="font-size: 16px; font-weight: bold; color: #333; margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 5px;">
+        Esperando acción...
+      </div>
+    </section>
+    
+    <section id="model-info" class="section">
+      <h2 class="section-title">Modelos Entrenados</h2>
+      {% if model_loaded %}
+      <ul>
+        <li><strong>Formas:</strong>
+          <ul>
+            {% for label in form_labels %}
+            <li>{{ label }}</li>
+            {% endfor %}
+          </ul>
+        </li>
+        <li><strong>Colores:</strong>
+          <ul>
+            {% for label in color_labels %}
+            <li>{{ label }}</li>
+            {% endfor %}
+          </ul>
+        </li>
+      </ul>
+      {% else %}
+      <p>Modelos no cargados. Por favor, entrena y carga los modelos de formas y colores.</p>
+      {% endif %}
+    </section>
 
-        <!-- Sección de Acciones -->
-        <section class="actions-section">
-            <h2>Acciones</h2>
-            <button class="btn-primary" onclick="iniciarEjecucion()">Ejecutar</button>
-            <button class="btn-primary">Detener</button>
-        </section>
+    <section id="logic-config" class="section">
+      <h2 class="section-title">Lógica Configurada</h2>
+      {% if logic_config %}
+      <ul>
+        {% for rule in logic_config %}
+        <li>Si <strong>{{ rule.shape }}</strong> y <strong>{{ rule.color }}</strong>, entonces
+          <strong>{{ rule.movement }}</strong></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p>No hay lógica configurada. Configúrala para que aparezca aquí.</p>
+      {% endif %}
+    </section>
+  </main>
 
-        <!-- Sección de Configuración -->
-        <section class="config-section">
-            <h2>Configuración</h2>
-            <button class="btn-secondary" onclick="window.location.href='{{ url_for('entrenar') }}'">Entrenar</button>
-            
-            {% if model_loaded %}
-                <button class="btn-secondary" onclick="window.location.href='{{ url_for('verificar_reconocimiento') }}'">Verificar Reconocimiento</button>
-            {% else %}
-                <p style="color: red;">Modelos no cargados. Por favor, sube los modelos de formas y colores.</p>
-                <a href="{{ url_for('subir_modelo') }}" class="btn-secondary">Subir Modelos</a>
-            {% endif %}
-            <button class="btn-secondary" onclick="window.location.href='{{ url_for('configurar_movimientos') }}'">Configurar Movimientos</button>
-            <button class="btn-secondary" onclick="window.location.href='{{ url_for('configurar_logica') }}'">Configurar Lógica</button>
-
-            
-        </section>
-    </main>
-
-    <div class="back-container">
-        <a href="{{ url_for('index') }}" class="btn-back">Regresar</a>
-    </div>    
-
-    <footer>
-        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
-    </footer>
-
-    <script>
-        const searchPortsBtn = document.getElementById('search-ports-btn');
-        const portsList = document.getElementById('ports-list');
-        const connectBtn = document.getElementById('connect-btn');
-        const connectionStatus = document.getElementById('connection-status');
-
-        function iniciarEjecucion() {
-            fetch('/ejecutar', {
-                method: 'POST'
-            })
-            .then(response => {
-                if (response.ok) {
-                    alert('Ejecución iniciada correctamente.');
-                } else {
-                    response.text().then(text => alert(`Error: ${text}`));
-                }
-            })
-            .catch(error => {
-                alert('Error al iniciar la ejecución.');
-                console.error(error);
-            });
-        }
-
-        searchPortsBtn.addEventListener('click', () => {
-            fetch('/listar_puertos')
-                .then(response => response.json())
-                .then(ports => {
-                    if (ports.length > 0) {
-                        portsList.innerHTML = '';
-                        ports.forEach(port => {
-                            const option = document.createElement('option');
-                            option.value = port;
-                            option.textContent = port;
-                            portsList.appendChild(option);
-                        });
-                        portsList.style.display = 'block';
-                        connectBtn.style.display = 'inline-block';
-                    } else {
-                        alert('No se encontraron puertos disponibles.');
-                    }
-                })
-                .catch(error => console.error('Error al buscar puertos:', error));
-        });
-
-        connectBtn.addEventListener('click', () => {
-            const selectedPort = portsList.value;
-            fetch(`/conectar_serial/${selectedPort}`, { method: 'POST' })
-                .then(response => response.text())
-                .then(status => {
-                    connectionStatus.textContent = status;
-                    connectionStatus.style.display = 'block';
-                })
-                .catch(error => {
-                    connectionStatus.textContent = 'Error al conectar.';
-                    console.error('Error:', error);
-                });
-        });
-    </script>
+  <footer>
+    <p>© 2025 MODS MCT - Sistemas de Control</p>
+  </footer>
 </body>
 </html>

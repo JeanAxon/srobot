@@ -1,634 +1,413 @@
+# -*- coding: utf-8 -*-
 import os
+import shutil
 import zipfile
+import threading
+import subprocess
 import time
 import json
-import threading  # <--- CORRECCIÓN 1: Importar threading para no bloquear la web
+import platform
+import sys
+
 from flask import Flask, render_template, Response, request, jsonify, send_file
 import cv2
 from io import BytesIO
 import base64
+import tensorflow as tf
 import numpy as np
-
-# --- CORRECCIÓN 2: Importación compatible con Raspberry Pi y Windows ---
-try:
-    # Intenta importar la versión ligera (Raspberry Pi)
-    import tflite_runtime.interpreter as tflite
-except ImportError:
-    # Si falla, usa la versión completa (Windows/PC)
-    import tensorflow.lite as tflite
-# -----------------------------------------------------------------------
-
-# Importa la clase BandaTransportadora
-from modulos.banda_transportadora import BandaTransportadora
-
-# Importar la función de ejecución automática
-from modulos.ejecucion import iniciar_ejecucion
-
-# Importa la clase BrazoRobotico
-from modulos.brazo_robotico import BrazoRobotico
-
-# Importar librería serial
 import serial
 import serial.tools.list_ports
+import logging
 
+# --- FUNCIONES CRÍTICAS PARA RUTAS DE ARCHIVOS ---
+
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta a un recurso de SOLO LECTURA que se empaqueta con la app. """
+    try:
+        # PyInstaller crea una carpeta temporal y guarda la ruta en _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # _MEIPASS no existe, estamos en modo desarrollo
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+def app_data_path(filename):
+    """ Obtiene la ruta a un archivo de datos que el usuario puede LEER y ESCRIBIR. Se guarda junto al .exe. """
+    if getattr(sys, 'frozen', False):
+        # Estamos ejecutando como un .exe empaquetado
+        application_path = os.path.dirname(sys.executable)
+    else:
+        # Estamos ejecutando en modo desarrollo
+        application_path = os.path.abspath(".")
+    return os.path.join(application_path, filename)
+
+# --- FIN DE FUNCIONES DE RUTAS ---
+
+from modulos.banda_transportadora import BandaTransportadora
+from modulos.ejecucion import iniciar_ejecucion, detener_ejecucion
+from modulos.brazo_robotico import BrazoRobotico
 from modulos.reconocimiento import reconocimiento_de_objetos
+from modulos.cinematica_directa import forward_kinematics
+from modulos.com_modbusTCP import ModbusBridge
 
+logging.basicConfig(filename=app_data_path('ejecucion.log'), level=logging.INFO, format='%(asctime)s - %(message)s')
 
-# Función para cargar el modelo TensorFlow Lite
 def cargar_modelo(model_path):
-    """Carga el modelo TensorFlow Lite usando el alias 'tflite' definido arriba."""
-    interpreter = tflite.Interpreter(model_path=model_path)
+    interpreter = tf.lite.Interpreter(model_path=model_path)
     interpreter.allocate_tensors()
     return interpreter
 
+def liberar_camara_linux():
+    device = '/dev/video0'
+    try:
+        procesos = subprocess.check_output(['fuser', device], stderr=subprocess.DEVNULL)
+        for pid in procesos.decode().split():
+            os.system(f"kill -9 {pid}")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    except Exception as e:
+        print(f"Error al liberar cámara: {e}")
 
-# --- CORRECCIÓN 3: INICIO TOLERANTE A FALLOS (Sin cámara) ---
-cap = cv2.VideoCapture(0)
-camera_available = False
+def inicializar_camara():
+    if platform.system() == "Linux":
+        if not os.environ.get('FLASK_DEBUG'):
+            liberar_camara_linux()
+        for device in ["/dev/video0", "/dev/video1", 0, 1]:
+            cap = cv2.VideoCapture(device)
+            if cap.isOpened():
+                print(f"✅ Cámara Linux inicializada en {device}")
+                os.system(f"v4l2-ctl -d {device} -c focus_automatic_continuous=0")
+                os.system(f"v4l2-ctl -d {device} -c focus_absolute=100")
+                return cap
+    else:
+        for i in range(5, -1, -1):
+            cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                print(f"✅ Cámara Windows inicializada en el índice {i}")
+                return cap
+    raise Exception("❌ No se pudo inicializar ninguna cámara.")
 
-if cap.isOpened():
-    camera_available = True
-    print("✅ Cámara detectada e iniciada.")
-else:
-    print("⚠️ ADVERTENCIA: No se detectó cámara. El servidor iniciará en modo 'Sin Video'.")
-# ------------------------------------------------------------
+cap = None
+try:
+    cap = inicializar_camara()
+except Exception as e:
+    print(e)
 
+app = Flask(__name__, template_folder=resource_path('templates'), static_folder=resource_path('static'))
 
-app = Flask(__name__)
+# --- REGISTRO DE CLIENTES CONECTADOS ---
+# Usamos un diccionario para no tener IPs duplicadas y guardar la última vez que se vieron.
+connected_clients = {}
 
-# Variable global para la conexión serial
-serial_connection = None
+@app.before_request
+def track_clients():
+    # Obtenemos la IP del cliente. request.remote_addr es la forma estándar.
+    client_ip = request.remote_addr
+    # Actualizamos el timestamp para este cliente.
+    connected_clients[client_ip] = time.time()
 
-# Instancia global de BandaTransportadora
-banda = BandaTransportadora()
+@app.route("/get_connected_clients")
+def get_connected_clients():
+    """Un nuevo endpoint para que la GUI pida la lista de clientes."""
+    # Filtramos clientes que no se han visto en los últimos 60 segundos.
+    active_threshold = time.time() - 60
+    active_clients = [ip for ip, last_seen in connected_clients.items() if last_seen > active_threshold]
+    return jsonify(clients=active_clients)
+# --- FIN DE REGISTRO DE CLIENTES ---
 
-# Instancia global de Brazo Robotico
-brazo = BrazoRobotico()
+serial_connection, banda, brazo = None, BandaTransportadora(), BrazoRobotico()
+modbus_bridge = ModbusBridge()
+modbus_bridge.start()
+form_interpreter, color_interpreter, form_labels, color_labels = None, None, [], []
 
+try:
+    form_model_path = resource_path('uploads/model_form/model_unquant.tflite')
+    color_model_path = resource_path('uploads/model_color/model_unquant.tflite')
+    form_labels_path = resource_path('uploads/model_form/labels.txt')
+    color_labels_path = resource_path('uploads/model_color/labels.txt')
+    if os.path.exists(form_model_path) and os.path.exists(form_labels_path):
+        with open(form_labels_path, 'r', encoding='utf-8') as f: form_labels = f.read().splitlines()
+        form_interpreter = cargar_modelo(form_model_path)
+        print("✅ Modelo de formas cargado.")
+    if os.path.exists(color_model_path) and os.path.exists(color_labels_path):
+        with open(color_labels_path, 'r', encoding='utf-8') as f: color_labels = f.read().splitlines()
+        color_interpreter = cargar_modelo(color_model_path)
+        print("✅ Modelo de colores cargado.")
+except Exception as e:
+    print(f"❌ Error al cargar modelos: {e}")
 
-# Ruta para la página principal
 @app.route("/")
-def index():
-    return render_template("index.html")
+def index(): return render_template("index.html")
 
-
-# Ruta para la página de opciones
 @app.route("/opciones")
 def opciones():
-    # Verificar rutas de los modelos y etiquetas
-    form_model_path = os.path.join('uploads', 'model_form', 'model_unquant.tflite')
-    color_model_path = os.path.join('uploads', 'model_color', 'model_unquant.tflite')
-
-    form_labels_path = os.path.join('uploads', 'model_form', 'labels.txt')
-    color_labels_path = os.path.join('uploads', 'model_color', 'labels.txt')
-
-    # Verificar si ambos modelos y etiquetas están disponibles
-    if not os.path.exists(form_model_path) or not os.path.exists(color_model_path):
-        return render_template(
-            "opciones.html",
-            message="Modelos no cargados. Por favor, sube los modelos de formas y colores.",
-            model_loaded=False
-        )
-
-    # Leer etiquetas de formas y colores
-    form_labels = []
-    color_labels = []
-
-    if os.path.exists(form_labels_path):
-        with open(form_labels_path, 'r') as file:
-            form_labels = file.read().splitlines()
-
-    if os.path.exists(color_labels_path):
-        with open(color_labels_path, 'r') as file:
-            color_labels = file.read().splitlines()
-
-    # Renderizar la página con las etiquetas cargadas
-    return render_template(
-        "opciones.html",
-        form_labels=form_labels,
-        color_labels=color_labels,
-        model_loaded=True
-    )
-
+    logic_config_path = app_data_path("logica_config.json")
+    logic_config = []
+    if os.path.exists(logic_config_path):
+        with open(logic_config_path, "r", encoding='utf-8') as file:
+            try: logic_config = json.load(file)
+            except: logic_config = []
+    return render_template("opciones.html", form_labels=form_labels, color_labels=color_labels, model_loaded=(form_interpreter and color_interpreter), logic_config=logic_config)
 
 @app.route("/listar_puertos")
-def listar_puertos():
-    """Devuelve una lista en formato JSON con todos los puertos seriales disponibles."""
-    ports = serial.tools.list_ports.comports()
-    port_list = [port.device for port in ports]
-    return jsonify(port_list)
+def listar_puertos(): return jsonify([p.device for p in serial.tools.list_ports.comports()])
 
-
-@app.route("/conectar_serial/<string:puerto>", methods=["POST"])
+@app.route("/conectar_serial/<path:puerto>", methods=["POST"])
 def conectar_serial(puerto):
     global serial_connection
-
-    # Cerrar si había una previa
-    if serial_connection and serial_connection.is_open:
-        serial_connection.close()
-        serial_connection = None
-
+    if serial_connection and serial_connection.is_open: serial_connection.close()
     try:
-        # Abre la conexión con el puerto que seleccionó el usuario
         serial_connection = serial.Serial(port=puerto, baudrate=9600, timeout=1)
-        
+        time.sleep(2)
         if serial_connection.is_open:
-            # Asigna la conexión abierta a la banda y al brazo
-            banda.set_connection(serial_connection)
-            brazo.set_connection(serial_connection)
-
-            return f"Conectado correctamente al puerto {puerto}"
-        else:
-            return f"No se pudo abrir el puerto {puerto}", 500
-
-    except Exception as e:
-        return f"Error al conectar al puerto {puerto}: {e}", 500
-
+            banda.set_connection(serial_connection); brazo.set_connection(serial_connection)
+            posicion_segura = {"velocidad": 0, "servos": [90, 90, 90, 90, 90, 90]}
+            serial_connection.write((json.dumps(posicion_segura) + "\n").encode())
+            return f"Conectado a {puerto}"
+        raise serial.SerialException("No se pudo abrir el puerto.")
+    except Exception as e: return f"Error al conectar: {e}", 500
 
 @app.route("/control_banda/<accion>", methods=["POST"])
 def control_banda(accion):
-    # Si no hay conexión abierta, avisa
-    if not serial_connection or not serial_connection.is_open:
-        return "No hay conexión activa con la banda", 400
+    if not (serial_connection and serial_connection.is_open): return "No hay conexion", 400
+    actions = {"activar": banda.activar, "desactivar": banda.desactivar, "derecha": banda.direccion_derecha, "izquierda": banda.direccion_izquierda}
+    if accion in actions:
+        actions[accion](); return f"Banda {accion}"
+    return "Accion no reconocida", 400
 
-    # Según la acción, llamamos a los métodos de la banda
-    if accion == "activar":
-        banda.activar()
-        return "Banda activada"
-    elif accion == "desactivar":
-        banda.desactivar()
-        return "Banda desactivada"
-    elif accion == "derecha":
-        banda.direccion_derecha()
-        return "Banda girando a la derecha"
-    elif accion == "izquierda":
-        banda.direccion_izquierda()
-        return "Banda girando a la izquierda"
-    else:
-        return "Acción no reconocida", 400
-
-
-# Ruta para la página de tomar imagen
 @app.route("/tomar_imagen")
-def tomar_imagen():
-    return render_template("tomar_imagen.html")
-
-
-# Ruta para la página de entrenar
+def tomar_imagen(): return render_template("tomar_imagen.html")
 @app.route("/entrenar")
-def entrenar():
-    return render_template("entrenar.html")
-
-
-# Ruta para subir el modelo generado
+def entrenar(): return render_template("entrenar.html")
 @app.route("/subir_modelo")
-def subir_modelo():
-    return render_template("subir_modelo.html")
+def subir_modelo(): return render_template("subir_modelo.html")
 
-
-# Ruta para manejar la subida del modelo
 @app.route("/upload_model", methods=["POST"])
 def upload_model():
-    # Verificar que ambos archivos estén presentes
-    if 'form_model' not in request.files or 'color_model' not in request.files:
-        return "No se han enviado ambos archivos", 400
+    return jsonify({'message': 'Subir modelos no soportado en .exe. Recompile la app.'}), 400
 
-    form_model_file = request.files['form_model']
-    color_model_file = request.files['color_model']
-
-    if form_model_file.filename == '' or color_model_file.filename == '':
-        return "No se seleccionaron ambos archivos", 400
-
-    # Manejar el modelo de formas
-    if form_model_file and form_model_file.filename.endswith('.zip'):
-        form_model_path = os.path.join('uploads', 'model_form')
-        if not os.path.exists(form_model_path):
-            os.makedirs(form_model_path)
-
-        # Extraer el contenido del ZIP
-        with zipfile.ZipFile(form_model_file, 'r') as zip_ref:
-            zip_ref.extractall(form_model_path)
-
-    # Manejar el modelo de colores
-    if color_model_file and color_model_file.filename.endswith('.zip'):
-        color_model_path = os.path.join('uploads', 'model_color')
-        if not os.path.exists(color_model_path):
-            os.makedirs(color_model_path)
-
-        # Extraer el contenido del ZIP
-        with zipfile.ZipFile(color_model_file, 'r') as zip_ref:
-            zip_ref.extractall(color_model_path)
-
-    # Leer las etiquetas de ambos modelos
-    form_labels_path = os.path.join('uploads', 'model_form', 'labels.txt')
-    color_labels_path = os.path.join('uploads', 'model_color', 'labels.txt')
-
-    form_labels = []
-    color_labels = []
-
-    if os.path.exists(form_labels_path):
-        with open(form_labels_path, 'r') as file:
-            form_labels = file.read().splitlines()
-
-    if os.path.exists(color_labels_path):
-        with open(color_labels_path, 'r') as file:
-            color_labels = file.read().splitlines()
-
-    # Devolver las etiquetas de ambos modelos
-    return jsonify({
-        'form_labels': form_labels,
-        'color_labels': color_labels
-    })
-
-
-# Cargar los modelos e intérpretes al inicio
-form_model_path = os.path.join('uploads', 'model_form', 'model_unquant.tflite')
-color_model_path = os.path.join('uploads', 'model_color', 'model_unquant.tflite')
-
-form_labels_path = os.path.join('uploads', 'model_form', 'labels.txt')
-color_labels_path = os.path.join('uploads', 'model_color', 'labels.txt')
-
-# Inicializar variables globales para los modelos e intérpretes
-form_interpreter = None
-color_interpreter = None
-form_labels = []
-color_labels = []
-
-try:
-    # Verificar la existencia de los modelos y etiquetas de formas
-    if os.path.exists(form_model_path) and os.path.exists(form_labels_path):
-        with open(form_labels_path, 'r') as file:
-            form_labels = [label.split(' ')[1] for label in file.read().splitlines()]  # Limpiar etiquetas
-        form_interpreter = cargar_modelo(form_model_path)
-        print("Modelo de formas cargado correctamente.")
-        print(f"Form Interpreter: {form_interpreter}")
-        print(f"Form Labels: {form_labels}")
-
-    # Verificar la existencia de los modelos y etiquetas de colores
-    if os.path.exists(color_model_path) and os.path.exists(color_labels_path):
-        with open(color_labels_path, 'r') as file:
-            color_labels = [label.split(' ')[1] for label in file.read().splitlines()]  # Limpiar etiquetas
-        color_interpreter = cargar_modelo(color_model_path)
-        print("Modelo de colores cargado correctamente.")
-        print(f"Color Interpreter: {color_interpreter}")
-        print(f"Color Labels: {color_labels}")
-except Exception as e:
-    print(f"Error al cargar modelos: {e}")
-
-
-# Verificar la existencia de los modelos y etiquetas (Redundancia por si falló el bloque anterior)
-if os.path.exists(form_model_path) and os.path.exists(form_labels_path) and form_interpreter is None:
-    with open(form_labels_path, 'r') as file:
-        form_labels = file.read().splitlines()
-    form_interpreter = cargar_modelo(form_model_path)
-
-if os.path.exists(color_model_path) and os.path.exists(color_labels_path) and color_interpreter is None:
-    with open(color_labels_path, 'r') as file:
-        color_labels = file.read().splitlines()
-    color_interpreter = cargar_modelo(color_model_path)
-
-
-# Ruta para mostrar video de la cámara conectada al servidor (CON reconocimiento)
 def gen_frames():
-    # --- MODO SIN CÁMARA O MODELOS: Generar imagen negra ---
-    if form_interpreter is None or color_interpreter is None:
-        frame = np.zeros((480, 640, 3), dtype=np.uint8)  # Crear un frame negro
-        mensaje = "Modelos no cargados"
-        cv2.putText(frame, mensaje, (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-        return
-
+    global cap
     while True:
-        if camera_available:
-            success, frame = cap.read()
-            if not success:
-                break
+        frame = None
+        if not (cap and cap.isOpened()):
+            frame = np.zeros((480, 640, 3), dtype=np.uint8); cv2.putText(frame, "CAMARA NO DETECTADA", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
         else:
-            # Generar frame negro si no hay cámara
-            frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            cv2.putText(frame, "CAMARA NO CONECTADA", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-            time.sleep(0.1)  # Simular espera para no saturar CPU
-
-        try:
-            # Solo intentamos reconocer si tenemos una imagen real (cámara conectada)
-            if camera_available:
-                # Reconocimiento de forma
-                forma = reconocimiento_de_objetos(frame, form_interpreter, form_labels)
-                # Reconocimiento de color
-                color = reconocimiento_de_objetos(frame, color_interpreter, color_labels)
-
-                # Manejar el caso de "vacio"
-                if forma == "vacio" or color == "vacio":
-                    etiqueta = "Sin detección"
-                else:
-                    etiqueta = f"{forma}_{color}"
-
-                cv2.putText(frame, etiqueta, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-            
-        except Exception as e:
-            # print(f"Error en la predicción: {e}") # Comentado para no saturar la consola
-            pass
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
+            success, frame = cap.read()
+            if not success: time.sleep(0.5); continue
+            if form_interpreter and color_interpreter:
+                try:
+                    resultado = reconocimiento_de_objetos(frame, form_interpreter, form_labels, color_interpreter, color_labels)
+                    cv2.putText(frame, resultado if resultado != "vacio" else "Sin deteccion", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                except Exception as e: cv2.putText(frame, "Error en prediccion", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            else: cv2.putText(frame, "Modelos no cargados", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        if frame is not None:
+            ret, buffer = cv2.imencode('.jpg', frame); yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
 def gen_raw_frames():
-    """Genera frames crudos o imagen de error si no hay cámara."""
+    global cap
     while True:
-        if camera_available:
-            success, frame = cap.read()  # Leer frame de la cámara
-            if not success:
-                break
+        if not (cap and cap.isOpened()):
+            frame = np.zeros((480, 640, 3), dtype=np.uint8); cv2.putText(frame, "CAMARA NO DETECTADA", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
         else:
-            # Imagen de espera
-            frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            cv2.putText(frame, "NO HAY CAMARA", (180, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            time.sleep(0.1)
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
+            success, frame = cap.read()
+            if not success: time.sleep(0.5); continue
+        ret, buffer = cv2.imencode('.jpg', frame); yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
 @app.route("/camera_feed")
-def camera_feed():
-    """Ruta para el feed de cámara sin reconocimiento."""
-    return Response(gen_raw_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
+def camera_feed(): return Response(gen_raw_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 @app.route("/video_feed")
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
+def video_feed(): return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route("/guardar_imagenes", methods=["POST"])
 def guardar_imagenes():
-    data = request.get_json()
-    folder_name = data['folder_name']
-    photos = data['photos']
-
-    folder_path = os.path.join("uploads", folder_name)
-
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-
-    for i, photo in enumerate(photos):
-        # Decodificar la imagen base64
-        image_data = photo.split(',')[1]  # Eliminar el encabezado base64
-        image_bytes = base64.b64decode(image_data)  # Decodificar base64 a bytes
-
-        # Guardar la imagen como un archivo .jpg
-        with open(os.path.join(folder_path, f"{folder_name}_{i+1}.jpg"), "wb") as file:
-            file.write(image_bytes)
-
-    return "Fotos guardadas exitosamente"
-
+    data = request.get_json(); folder_path = app_data_path(os.path.join("uploads", data['folder_name'])); os.makedirs(folder_path, exist_ok=True)
+    for i, photo in enumerate(data['photos']):
+        with open(os.path.join(folder_path, f"{data['folder_name']}_{i+1}.jpg"), "wb") as f: f.write(base64.b64decode(photo.split(',')[1]))
+    return "Fotos guardadas."
 
 @app.route("/obtener_carpetas")
 def obtener_carpetas():
-    """Devuelve una lista de todas las carpetas disponibles en 'uploads/'."""
-    folder_path = 'uploads'
-
-    # Crear la carpeta principal si no existe
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-
-    # Listar todas las carpetas
-    folders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
-
-    return jsonify(folders)
-
+    folder_path = app_data_path('uploads'); os.makedirs(folder_path, exist_ok=True)
+    return jsonify([f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f)) and f not in ['model_color', 'model_form']])
 
 @app.route("/descargar/<folder_name>")
 def descargar(folder_name):
-    """Comprime y descarga la carpeta seleccionada como .zip."""
-    folder_path = os.path.join("uploads", folder_name)
-
-    if not os.path.exists(folder_path):
-        return "La carpeta no existe", 404
-
-    zip_filename = f"{folder_name}.zip"
-    zip_file = BytesIO()
-
-    with zipfile.ZipFile(zip_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    folder_path = app_data_path(os.path.join("uploads", folder_name))
+    if not os.path.exists(folder_path): return "Carpeta no existe", 404
+    zip_path = app_data_path(f"{folder_name}.zip")
+    with zipfile.ZipFile(zip_path, 'w') as zf:
         for root, _, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, folder_path)
-                zipf.write(file_path, arcname)
-
-    zip_file.seek(0)
-    return send_file(zip_file, as_attachment=True, download_name=zip_filename)
-
+            for file in files: zf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), folder_path))
+    return send_file(zip_path, as_attachment=True, download_name=f"{folder_name}.zip")
 
 @app.route("/verificar_reconocimiento")
 def verificar_reconocimiento():
-    form_model_path = os.path.join('uploads', 'model_form', 'model_unquant.tflite')
-    color_model_path = os.path.join('uploads', 'model_color', 'model_unquant.tflite')
-    form_labels_path = os.path.join('uploads', 'model_form', 'labels.txt')
-    color_labels_path = os.path.join('uploads', 'model_color', 'labels.txt')
-
-    if os.path.exists(form_model_path) and os.path.exists(color_model_path):
-        labels = []
-        if os.path.exists(form_labels_path):
-            with open(form_labels_path, 'r') as file:
-                labels.extend(file.read().splitlines())
-        if os.path.exists(color_labels_path):
-            with open(color_labels_path, 'r') as file:
-                labels.extend(file.read().splitlines())
-
-        return render_template("verificar_reconocimiento.html", labels=labels)
-    else:
-        return "Modelo no cargado correctamente.", 400
-
+    if not (form_interpreter and color_interpreter): return "Modelo no cargado", 400
+    return render_template("verificar_reconocimiento.html", labels=form_labels + color_labels)
 
 @app.route("/configurar_movimientos")
-def configurar_movimientos():
-    return render_template("configurar_movimientos.html")
+def configurar_movimientos(): return render_template("configurar_movimientos.html")
 
 @app.route("/status_connection")
 def status_connection():
-    global serial_connection
-    if serial_connection and serial_connection.is_open:
-        return jsonify({"connected": True, "port": serial_connection.port})
-    else:
-        return jsonify({"connected": False, "port": None})
+    if serial_connection and serial_connection.is_open: return jsonify({"connected": True, "port": serial_connection.port})
+    return jsonify({"connected": False, "port": None})
 
-
-@app.route("/control_brazo/mover_servo/<int:servo_num>/<int:angulo>/<int:vel>", methods=["POST"])
-def mover_servo(servo_num, angulo, vel):
-    if not serial_connection or not serial_connection.is_open:
-        return "No hay conexión activa con el brazo", 400
-    
-    brazo.mover_servo(servo_num, angulo, vel)
-    return f"Servo {servo_num} => {angulo}° con velocidad {vel} OK"
-
+@app.route("/control_brazo/mover_servos_global", methods=["POST"])
+def mover_servos_global():
+    if not (serial_connection and serial_connection.is_open): return "No hay conexion", 400
+    data = request.get_json()
+    if not data or "velocidad" not in data or "servos" not in data or len(data["servos"]) != 6: return "Datos incorrectos.", 400
+    brazo.mover_servos({i + 1: s for i, s in enumerate(data["servos"])}, data["velocidad"]); return "Comando enviado.", 200
 
 @app.route("/guardar_movimiento", methods=["POST"])
 def guardar_movimiento():
-    data = request.get_json()
-    movement_name = data.get("movementName")
-    posiciones = data.get("posiciones")
-
-    if not movement_name or not posiciones:
-        return "Nombre del movimiento o posiciones inválidas.", 400
-
-    folder_path = os.path.join("movimientos")
-    os.makedirs(folder_path, exist_ok=True)
-    file_path = os.path.join(folder_path, f"{movement_name}.txt")
-
-    try:
-        with open(file_path, "w") as file:
-            for posicion in posiciones:
-                file.write(f"{posicion}\n")
-        return f"Movimiento '{movement_name}' guardado exitosamente."
-    except Exception as e:
-        return f"Error al guardar el movimiento: {e}", 500
-
+    data = request.get_json(); folder_path = app_data_path("movimientos"); os.makedirs(folder_path, exist_ok=True)
+    file_path = os.path.join(folder_path, f"{data['movementName']}.txt")
+    with open(file_path, "w", encoding='utf-8') as f:
+        for pos in data['posiciones']: f.write(f"{json.dumps(pos)}\n")
+    return "Movimiento guardado."
 
 @app.route("/obtener_movimientos", methods=["GET"])
 def obtener_movimientos():
-    folder_path = "movimientos"
-    os.makedirs(folder_path, exist_ok=True)
-    movimientos = [f for f in os.listdir(folder_path) if f.endswith(".txt")]
-    return jsonify(movimientos)
-
+    folder_path = app_data_path("movimientos"); os.makedirs(folder_path, exist_ok=True)
+    return jsonify([f for f in os.listdir(folder_path) if f.endswith(".txt")])
 
 @app.route("/borrar_movimiento/<nombre>", methods=["DELETE"])
 def borrar_movimiento(nombre):
-    folder_path = "movimientos"
-    file_path = os.path.join(folder_path, nombre)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        return f"Movimiento '{nombre}' eliminado exitosamente."
-    return f"El movimiento '{nombre}' no existe.", 404
-
+    file_path = app_data_path(os.path.join("movimientos", nombre))
+    if os.path.exists(file_path): os.remove(file_path); return f"Movimiento '{nombre}' eliminado."
+    return f"Movimiento no encontrado.", 404
 
 @app.route("/ejecutar_movimiento/<nombre>", methods=["POST"])
 def ejecutar_movimiento(nombre):
-    folder_path = "movimientos"
-    file_path = os.path.join(folder_path, nombre)
-
-    if not os.path.exists(file_path):
-        return f"El movimiento '{nombre}' no existe.", 404
-
-    try:
-        with open(file_path, "r") as file:
-            for line in file:
-                line = line.strip()
-
-                if "Velocidad:" in line and "Servos:" in line:
-                    try:
-                        velocidad = int(line.split("Velocidad:")[1].split(",")[0].strip())
-                        servos_str = line.split("Servos:")[1].strip().strip("[]")
-                        servos = [int(angle.strip()) for angle in servos_str.split(",")]
-
-                        for i, angulo in enumerate(servos, start=1):
-                            brazo.mover_servo(i, angulo, velocidad)
-                            time.sleep(0.2) 
-
-                    except Exception as e:
-                        print(f"Error procesando la línea: {line} -> {e}")
-                        continue
-
-        return f"Movimiento '{nombre}' ejecutado exitosamente."
-    except Exception as e:
-        return f"Error al ejecutar el movimiento: {e}", 500
-
+    file_path = app_data_path(os.path.join("movimientos", nombre))
+    if not os.path.exists(file_path): return jsonify({"error": "Movimiento no encontrado"}), 404
+    with open(file_path, "r", encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                pos = json.loads(line); brazo.mover_servos({i+1: s for i, s in enumerate(pos['servos'])}, pos['velocidad']); time.sleep(0.5)
+    return jsonify({"mensaje": "Movimiento ejecutado."})
 
 @app.route("/configurar_logica")
 def configurar_logica():
-    # Cargar etiquetas de formas y colores
-    form_labels_path = os.path.join('uploads', 'model_form', 'labels.txt')
-    color_labels_path = os.path.join('uploads', 'model_color', 'labels.txt')
-
-    form_labels = []
-    color_labels = []
-
-    if os.path.exists(form_labels_path):
-        with open(form_labels_path, 'r') as file:
-            form_labels = file.read().splitlines()
-
-    if os.path.exists(color_labels_path):
-        with open(color_labels_path, 'r') as file:
-            color_labels = file.read().splitlines()
-
-    # Cargar movimientos guardados
-    movimientos_path = "movimientos"
-    movimientos = [f.replace(".txt", "") for f in os.listdir(movimientos_path) if f.endswith(".txt")]
-
-    return render_template("configurar_logica.html", form_labels=form_labels, color_labels=color_labels, movimientos=movimientos)
-
+    mov_path = app_data_path("movimientos"); os.makedirs(mov_path, exist_ok=True)
+    movs = [f.replace(".txt", "") for f in os.listdir(mov_path) if f.endswith(".txt")]
+    return render_template("configurar_logica.html", form_labels=form_labels, color_labels=color_labels, movimientos=movs)
 
 @app.route("/guardar_logica", methods=["POST"])
 def guardar_logica():
-    reglas = request.get_json()
-    logica_path = "logica_config.json"
-
-    try:
-        with open(logica_path, "w") as file:
-            json.dump(reglas, file, indent=4)
-        return "Configuración de lógica guardada exitosamente."
-    except Exception as e:
-        return f"Error al guardar la configuración: {e}", 500
-
+    reglas = request.get_json(); logica_path = app_data_path("logica_config.json")
+    with open(logica_path, "w", encoding='utf-8') as f: json.dump(reglas, f, indent=4)
+    return "Configuracion guardada."
 
 @app.route("/cargar_logica", methods=["GET"])
 def cargar_logica():
-    logica_path = "logica_config.json"
-    if not os.path.exists(logica_path):
-        return jsonify([]) 
+    path = app_data_path("logica_config.json")
+    if not os.path.exists(path): return jsonify([])
+    with open(path, "r", encoding='utf-8') as f:
+        try: return jsonify(json.load(f))
+        except: return jsonify([])
 
-    with open(logica_path, "r") as file:
-        reglas = json.load(file)
-    return jsonify(reglas)
+@app.route("/iniciar_ejecucion", methods=["POST"])
+def iniciar_ejecucion_route():
+    threading.Thread(target=iniciar_ejecucion, args=(form_interpreter, color_interpreter, form_labels, color_labels, cap, banda, brazo), daemon=True).start()
+    return jsonify(status='enviado')
 
+@app.route("/detener_ejecucion", methods=["POST"])
+def detener_ejecucion_route():
+    detener_ejecucion(); return jsonify(status='enviado')
 
-@app.route("/ejecutar", methods=["POST"])
-def ejecutar():
-    """
-    Inicia el proceso automático en un HILO SEPARADO para no bloquear Flask.
-    """
+@app.route("/cargar_movimiento/<nombre>", methods=["POST"])
+def cargar_movimiento(nombre):
+    path = app_data_path(os.path.join("movimientos", nombre));
+    if not os.path.exists(path): return jsonify({"error": "No encontrado"}), 404
+    with open(path, "r", encoding='utf-8') as f: return jsonify([json.loads(line) for line in f if line.strip()])
+
+@app.route("/guardar_punto", methods=["POST"])
+def guardar_punto():
+    data = request.get_json(); folder_path = app_data_path("puntos_guardados"); os.makedirs(folder_path, exist_ok=True)
+    file_path = os.path.join(folder_path, f"{data['name']}.txt")
+    contenido = f"Nombre: {data['name']}\nPosicion: X={data['x']}, Y={data['y']}, Z={data['z']}\nOrientacion: Roll={data['roll']}°, Pitch={data['pitch']}°, Yaw={data['yaw']}°\n"
+    with open(file_path, "w", encoding='utf-8') as f: f.write(contenido)
+    return f"Punto '{data['name']}' guardado."
+
+@app.route("/listar_puntos", methods=["GET"])
+def listar_puntos():
+    path = app_data_path("puntos_guardados"); os.makedirs(path, exist_ok=True)
+    return jsonify([f.replace(".txt", "") for f in os.listdir(path) if f.endswith(".txt")])
+
+@app.route("/borrar_punto/<string:point_name>", methods=["DELETE"])
+def borrar_punto(point_name):
+    path = app_data_path(os.path.join("puntos_guardados", f"{point_name}.txt"))
+    if os.path.exists(path): os.remove(path); return f"Punto '{point_name}' borrado."
+    return f"Punto no encontrado.", 404
+
+@app.route("/ver_punto/<string:point_name>", methods=["GET"])
+def ver_punto(point_name):
+    path = app_data_path(os.path.join("puntos_guardados", f"{point_name}.txt"))
+    if not os.path.exists(path): return f"Punto no encontrado.", 404
+    with open(path, "r", encoding='utf-8') as f: return f.read()
+
+@app.route("/configurar_movimientos_CI")
+def configurar_movimientos_CI(): return render_template("configurar_movimientos_CI.html")
+
+@app.route("/calcular_angulos", methods=["POST"])
+def calcular_angulos_servos():
+    data = request.get_json()
+    from modulos.cinematica_inversa import calcular_angulos
+    angulos = calcular_angulos(data['x'], data['y'], data['z'], data['roll'], data['pitch'], data['yaw'])
+    return jsonify({"angulos": angulos})
+
+@app.route("/borrar_carpeta/<folder_name>", methods=["DELETE"])
+def borrar_carpeta(folder_name):
+    path = app_data_path(os.path.join("uploads", folder_name))
+    if os.path.exists(path): shutil.rmtree(path); return f"Carpeta '{folder_name}' borrada."
+    return "Carpeta no encontrada.", 404
+
+@app.route("/borrar_todas_carpetas", methods=["DELETE"])
+def borrar_todas_carpetas():
+    path = app_data_path("uploads")
+    if os.path.exists(path): shutil.rmtree(path); return "Carpetas de 'uploads' borradas."
+    return "La carpeta 'uploads' no existe.", 404
+
+@app.route("/logs", methods=["GET"])
+def obtener_logs():
+    path = app_data_path("ejecucion.log")
     try:
-        if form_interpreter is None or color_interpreter is None:
-            return "Modelos no cargados. Por favor, asegúrate de que los modelos están correctamente configurados.", 400
+        with open(path, "r", encoding='utf-8') as f: logs = f.readlines()
+        return jsonify(logs=logs[-1].strip() if logs else "")
+    except FileNotFoundError: return jsonify(logs="No hay logs.")
+    except Exception as e: return jsonify(logs=f"Error al leer logs: {e}"), 500
 
-        if not serial_connection or not serial_connection.is_open:
-            return "Conexión serial no establecida. Por favor, conecta el dispositivo antes de ejecutar.", 400
+@app.route("/modbus/estado")
+def estado_modbus(): return jsonify(modbus_bridge.get_status())
+@app.route("/modbus/datos_plc")
+def datos_plc(): return jsonify({"datos": modbus_bridge.get_plc_data(), "status": "success"})
 
-        # --- CORRECCIÓN IMPORTANTE: Ejecutar en hilo separado ---
-        thread = threading.Thread(
-            target=iniciar_ejecucion,
-            args=(form_interpreter, color_interpreter, form_labels, color_labels, cap, banda, brazo)
-        )
-        thread.daemon = True # El hilo se cerrará si se cierra el programa principal
-        thread.start()
-        # ---------------------------------------------------------
+@app.route("/calcular_posicion_gripper", methods=["POST"])
+def calcular_posicion_gripper():
+    data = request.get_json()
+    if not data or "servos" not in data or len(data["servos"]) < 5: return jsonify({"error": "Faltan datos"}), 400
+    return jsonify(forward_kinematics(data["servos"][:5]))
 
-        return "Ejecución iniciada correctamente en segundo plano.", 200
-    except Exception as e:
-        return f"Error durante la ejecución: {e}", 500
+@app.route("/obtener_estado", methods=["GET"])
+def obtener_estado():
+    path = app_data_path("estado.json")
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f: return jsonify(json.load(f))
+    return jsonify({"velocidad": 50, "servos": [90, 90, 90, 90, 90, 90]})
 
+@app.route('/obtener_area_trabajo', methods=['GET'])
+def obtener_area_trabajo():
+    points = [{"x": x/100, "y": y/100, "z": z/100} for x, y, z in [(0, 0, 0), (100, 100, 100), (200, 200, 200)]]
+    return jsonify({"points": points})
 
-if __name__ == "__main__":
-    # --- MENSAJE INFORMATIVO AL INICIAR ---
-    print("\n" + "="*50)
-    print("  SERVIDOR ROBOT LISTO 🤖")
-    print("  Accede desde tu navegador en estas direcciones:")
-    print("  (Copia la IP y añade :5000 al final)")
-    print("-" * 50)
-    
-    # Muestra las IPs limpias
-    os.system("hostname -I") 
-    
-    print("-" * 50)
-    print("  Ejemplo Cable: http://192.168.137.50:5000")
-    print("  Ejemplo Wi-Fi: http://192.168.1.147:5000  (La tuya puede variar)")
-    print("="*50 + "\n")
-    # ---------------------------------------
-
-    app.run(debug=True, host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    try:
+        app.run(host='0.0.0.0', port=80, debug=True)
+    finally:
+        print("Cerrando la aplicación y los recursos...")
+        if cap: cap.release()
+        modbus_bridge.stop()

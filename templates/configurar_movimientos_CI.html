@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Movimientos - Cinemática Inversa</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #007bff;
+            padding: 10px 20px;
+            color: white;
+        }
+        .btn-back {
+            font-size: 24px;
+            text-decoration: none;
+            color: white;
+        }
+        .main-title {
+            flex-grow: 1;
+            font-size: 22px;
+            text-align: center;
+        }
+        .connection-status {
+            font-size: 14px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: red;
+            color: white;
+        }
+        .section {
+            width: 90%;
+            max-width: 450px;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h2, h3 {
+            margin-bottom: 10px;
+        }
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            gap: 5px;
+            justify-content: center;
+        }
+        button {
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .angle-panel {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        /* Nueva sección para estilo de los botones de paso */
+        .step-control {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        .step-control button {
+            width: 60px;
+        }
+        /* Slider de velocidad */
+        .speed-control {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🔹 Encabezado -->
+    <header class="header">
+        <a href="{{ url_for('opciones') }}" class="btn-back">⬅</a>
+        <h1 class="main-title">Configurar Movimientos - Cinemática Inversa</h1>
+        <div class="connection-status" id="connection-status">🔴 Desconectado</div>
+    </header>
+
+    <!-- 🔹 Sección: Movimiento Manual -->
+    <section class="section">
+        <h2>Movimiento Manual</h2>
+
+        <!-- 🔸 Botones para cambiar el valor de pasoActual -->
+        <div class="step-control">
+            <button onclick="cambiarPaso(1)">Paso 1</button>
+            <button onclick="cambiarPaso(5)">Paso 5</button>
+            <button onclick="cambiarPaso(10)">Paso 10</button>
+        </div>
+
+        <!-- 🔸 Slider para la velocidad (0 a 100, inicia en 50) -->
+        <div class="speed-control">
+            <label for="speedRange">Velocidad:</label><br>
+            <input type="range" id="speedRange" min="0" max="100" value="50" oninput="updateSpeedValue()">
+            <span id="speedValue">50</span>
+        </div>
+
+        <!-- 🔹 Controles de Posición -->
+        <h3>Posición</h3>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>X: <span id="valor-x">0.00</span> mm</label>
+                <div class="btn-group">
+                    <button onclick="ajustarValor('x', -pasoActual)">◀</button>
+                    <button onclick="ajustarValor('x', pasoActual)">▶</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Y: <span id="valor-y">0.00</span> mm</label>
+                <div class="btn-group">
+                    <button onclick="ajustarValor('y', pasoActual)">⬆</button>
+                    <button onclick="ajustarValor('y', -pasoActual)">⬇</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Z: <span id="valor-z">483.87</span> mm</label>
+                <div class="btn-group">
+                    <button onclick="ajustarValor('z', pasoActual)">▲</button>
+                    <button onclick="ajustarValor('z', -pasoActual)">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Controles de Orientación -->
+        <h3>Orientación</h3>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Roll: <span id="valor-roll">0.00</span>°</label>
+                <div class="btn-group">
+                    <button onclick="ajustarValor('roll', -pasoActual)">⟲</button>
+                    <button onclick="ajustarValor('roll', pasoActual)">⟳</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Pitch: <span id="valor-pitch">0.00</span>°</label>
+                <div class="btn-group">
+                    <button onclick="ajustarValor('pitch', -pasoActual)">⭠</button>
+                    <button onclick="ajustarValor('pitch', pasoActual)">⭢</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Yaw: <span id="valor-yaw">-90.00</span>°</label>
+                <div class="btn-group">
+                    <button onclick="ajustarValor('yaw', -pasoActual)">⭣</button>
+                    <button onclick="ajustarValor('yaw', pasoActual)">⭡</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Ángulos Calculados -->
+        <h3>Ángulos Calculados</h3>
+        <div class="angle-panel">
+            <p>Servo 1: <span id="servo-1">90.00</span>°</p>
+            <p>Servo 2: <span id="servo-2">90.00</span>°</p>
+            <p>Servo 3: <span id="servo-3">90.00</span>°</p>
+            <p>Servo 4: <span id="servo-4">90.00</span>°</p>
+            <p>Servo 5: <span id="servo-5">90.00</span>°</p>
+            <!-- Opcional: Mostrar tiempo de cálculo -->
+            <p>Tiempo de cálculo: <span id="tiempo-calculo">0.00</span> s</p>
+        </div>
+
+    </section>
+
+    <!-- 🔹 Pie de Página -->
+    <footer class="footer">
+        <p>© 2025 Sistema de Control - MODS MCT</p>
+    </footer>
+
+    <script>
+        let pasoActual = 1; // Valor inicial del paso
+
+        // Función para cambiar el tamaño del paso
+        function cambiarPaso(nuevoPaso) {
+            pasoActual = nuevoPaso;
+            console.log("Se cambió el paso a:", pasoActual);
+        }
+
+        // Función para actualizar el label de velocidad (slider)
+        function updateSpeedValue() {
+            let speedVal = document.getElementById("speedRange").value;
+            document.getElementById("speedValue").innerText = speedVal;
+            // Puedes llamar a enviarDatos() automáticamente si quieres recalcular
+            // enviarDatos();
+        }
+
+        // Función para ajustar los valores y disparar el cálculo
+        function ajustarValor(eje, delta) {
+            const elemento = document.getElementById(`valor-${eje}`);
+            let valor = parseFloat(elemento.innerText);
+            valor = parseFloat((valor + delta).toFixed(2));
+            elemento.innerText = valor.toFixed(2);
+            enviarDatos(); // Disparar cálculo inmediatamente
+        }
+    
+        // Función para enviar datos al servidor
+        function enviarDatos() {
+            // Tomamos la velocidad del slider
+            let speedVal = document.getElementById("speedRange").value;
+
+            // Obtenemos la pose
+            const posicion = {
+                x: parseFloat($("#valor-x").text()) || 0,
+                y: parseFloat($("#valor-y").text()) || 0,
+                z: parseFloat($("#valor-z").text()) || 483.87,
+                roll: parseFloat($("#valor-roll").text()) || 0,
+                pitch: parseFloat($("#valor-pitch").text()) || 0,
+                yaw: parseFloat($("#valor-yaw").text()) || -90,
+                speed: parseInt(speedVal) // Añadimos la velocidad al JSON
+            };
+        
+            console.log("Enviando datos:", posicion);
+            
+            $.ajax({
+                url: "/calcular_angulos",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(posicion),
+                success: function(response) {
+                    console.log("Respuesta exitosa:", response);
+                    if (response.angulos) {
+                        actualizarAngulos(response.angulos, response.tiempo_calculo);
+                    } else if (response.error) {
+                        alert("Error: " + response.error);
+                    }
+                },
+                error: function(xhr) {
+                    console.error("Error en la solicitud:", xhr.responseText);
+                    alert("Error de comunicación con el servidor");
+                }
+            });
+        }
+    
+        // Función para actualizar la interfaz con los nuevos ángulos
+        function actualizarAngulos(angulos, tiempo_calculo) {
+            // Asumiendo que 'angulos' es un array de 5 elementos
+            document.getElementById("servo-1").innerText = angulos[0].toFixed(2);
+            document.getElementById("servo-2").innerText = angulos[1].toFixed(2);
+            document.getElementById("servo-3").innerText = angulos[2].toFixed(2);
+            document.getElementById("servo-4").innerText = angulos[3].toFixed(2);
+            document.getElementById("servo-5").innerText = angulos[4].toFixed(2);
+
+            // Mostrar tiempo de cálculo (si viene en la respuesta)
+            if (tiempo_calculo !== undefined) {
+                document.getElementById("tiempo-calculo").innerText = tiempo_calculo.toFixed(4);
+            }
+        }
+    
+        // Al cargar la página, enviamos datos iniciales para calcular ángulos
+        $(document).ready(function() {
+            enviarDatos();
+        });
+    </script>
+</body>
+</html>
