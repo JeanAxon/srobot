@@ -1,0 +1,323 @@
+/* =============================================================
+   configurar_movimientos.css (Versión Final Completa)
+   -------------------------------------------------------------
+   Estilos específicos para la interfaz de control del brazo.
+   Incluye layout, controles, simulación y overlay de ejecución.
+   ============================================================= */
+
+/* --- 1. GRID PRINCIPAL (LAYOUT) --- */
+.control-grid {
+    display: grid;
+    gap: 1.5rem; /* Espaciado consistente */
+    padding-bottom: 40px;
+    width: 100%;
+    
+    /* Columnas: Izquierda (320px), Centro (Auto), Derecha (300px) */
+    grid-template-columns: 320px 1fr 300px;
+    
+    /* Mapa de Áreas */
+    grid-template-areas:
+        "controls sim      data"
+        "controls sim      sequence"
+        "library  library  inspector";
+}
+
+/* Asignación de áreas a las clases HTML */
+.area-controls  { grid-area: controls; }
+.area-sim       { grid-area: sim; }
+.area-data      { grid-area: data; }
+.area-sequence  { grid-area: sequence; }
+.area-library   { grid-area: library; }
+.area-inspector { grid-area: inspector; }
+
+
+/* --- 2. ESTILOS DE TARJETAS Y TÍTULOS --- */
+/* Ajuste para que los títulos dentro de los paneles tengan línea divisoria */
+.card-panel h3 {
+    color: var(--primary-color, #004aad);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 0.8rem;
+}
+
+/* Badge para el estado (Velocidad, etc.) */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+
+/* --- 3. CONTROLES DE SERVOS (Panel Izquierdo) --- */
+.area-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.servo-control-group {
+    background: #f8fafc; /* Gris muy suave */
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.servo-control-group:hover {
+    border-color: var(--primary-color, #004aad);
+    box-shadow: 0 4px 6px -2px rgba(0, 74, 173, 0.1);
+    background: #fff;
+}
+
+.slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--text-color, #334155);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Estilización de los Sliders (Range Inputs) */
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: #cbd5e1;
+    border-radius: 4px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--primary-color, #004aad);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+/* Botones del Gripper */
+.gripper-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+}
+
+.gripper-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.gripper-btn:hover { background: #f1f5f9; }
+
+.gripper-btn.active {
+    background: var(--primary-color, #004aad);
+    color: white;
+    border-color: var(--primary-color, #004aad);
+}
+
+
+/* --- 4. SIMULACIÓN 3D (Panel Central) --- */
+.area-sim {
+    padding: 0 !important; /* Reseteamos padding para que el canvas llene todo */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e2e8f0;
+    background: white;
+}
+
+.sim-header {
+    padding: 1rem 1.5rem;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sim-header h3 {
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+#robot-simulation {
+    flex-grow: 1;
+    width: 100%;
+    min-height: 400px;
+    background-color: #f8fafc; /* Fondo por si falla Three.js */
+}
+
+
+/* --- 5. LISTAS Y DATOS (Paneles Derechos e Inferiores) --- */
+.movement-list {
+    list-style: none;
+    overflow-y: auto;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    background: #fff;
+    padding: 0;
+    margin: 0;
+}
+
+.movement-item {
+    padding: 0.8rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+.movement-item:last-child { border-bottom: none; }
+.movement-item:hover { background-color: #f8fafc; }
+
+/* Texto truncado si es muy largo */
+.movement-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70%;
+}
+
+.item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+/* Botones de Iconos (Acciones pequeñas) */
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover { background: #e2e8f0; }
+.text-red { color: #ef4444; }
+.text-blue { color: #3b82f6; }
+.text-green { color: #10b981; }
+
+/* Panel de Cinemática (Coordenadas) */
+.kinematics-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 15px;
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.kinematics-info span {
+    display: flex;
+    justify-content: space-between;
+}
+
+.kinematics-info b {
+    color: var(--primary-color, #004aad);
+}
+
+
+/* --- 6. OVERLAY DE CUENTA REGRESIVA (NUEVO) --- */
+#countdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7); /* Fondo oscuro semitransparente */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999; /* Por encima de todo */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(4px); /* Efecto borroso elegante */
+}
+
+#countdown-overlay.active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.countdown-number {
+    font-size: 10rem;
+    font-weight: 800;
+    color: white;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    animation: pulse 0.8s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+
+/* --- 7. RESPONSIVE DESIGN --- */
+@media (max-width: 1100px) {
+    .control-grid {
+        /* En pantallas medianas, todo en una sola columna */
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "sim"
+            "controls"
+            "data"
+            "sequence"
+            "library"
+            "inspector";
+    }
+    
+    .area-sim {
+        min-height: 350px;
+    }
+    
+    /* Ajuste para que la biblioteca no sea demasiado alta en móviles */
+    .area-library ul {
+        max-height: 200px;
+    }
+}

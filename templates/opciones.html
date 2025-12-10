@@ -1,436 +1,380 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Opciones</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <style>
-    /* Estilos para el encabezado */
-    .header {
-      display: flex;
-      align-items: center;
-      background-color: #0066cc;
-      color: white;
-      padding: 10px 20px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      position: relative;
-      width: 100%;
-    }
-    .btn-back {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: white;
-      font-size: 18px;
-    }
-    .btn-back i {
-      margin-right: 8px;
-      font-size: 24px;
-    }
-    .main-title {
-      margin: 0 auto;
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .menu-container {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      margin-left: 20px;
-    }
-    /* Estilos para el menú */
-    .menu-item { 
-      position: relative; 
-      width: 100px;
-    }
-    .menu-button {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 24px;
-      cursor: pointer;
-    }
-    .menu-button:focus {
-      outline: none;
-    }
-    .dropdown-menu {
-      position: absolute;
-      top: calc(100% + 10px);
-      left: 0;
-      background-color: white;
-      color: black;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      display: none;
-      flex-direction: column;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      z-index: 10;
-      padding: 12px;
-    }
-    .dropdown-menu.open {
-      display: flex;
-    }
-    .dropdown-menu a,
-    .dropdown-menu button {
-      padding: 15px;
-      text-decoration: none;
-      color: black;
-      font-size: 16px;
-      border: none;
-      background: none;
-      text-align: left;
-      width: 100%;
-      cursor: pointer;
-    }
-    .dropdown-menu a:hover,
-    .dropdown-menu button:hover {
-      background-color: #f0f0f0;
-    }
-    .dropdown-menu p {
-      margin: 10px 0 0;
-      font-size: 14px;
-      color: #333;
-    }
-    /* Estilos para el contenido principal */
-    .main-content {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
-      padding: 20px;
-    }
-    .section {
-      flex: 1 1 auto;
-      min-width: 300px;
-      max-width: 400px;
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      text-align: center;
-    }
-    .section ul {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-    }
-    .section ul li {
-      margin: 5px 0;
-    }
-    /* Media Queries para diseño responsive */
-    @media (orientation: landscape) {
-      .main-content {
-        flex-direction: row;
-      }
-    }
-    @media (orientation: portrait) {
-      .main-content {
+{% extends "layout/base.html" %}
+
+{% block title %}Panel de Control{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    /* ESTILOS PARA LA SENTENCIA LÓGICA (Si... y... entonces...) */
+    .logic-container {
+        display: flex;
         flex-direction: column;
-      }
+        gap: 10px;
     }
-    @media (max-width: 768px) {
-      .header {
-        flex-wrap: wrap;
-        padding: 10px;
-      }
-      .main-title {
-        order: 2;
-        margin: 10px 0;
-        width: 100%;
-        text-align: center;
-      }
-      .menu-container {
-        order: 3;
-        width: 100%;
-        justify-content: space-evenly;
-      }
-      .btn-back {
-        order: 1;
-      }
+
+    .logic-row {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        padding: 12px 15px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        flex-wrap: wrap; /* Para móviles */
+        gap: 8px;
+        font-size: 0.95rem;
     }
-  </style>
-  <script>
-    // Función para guardar el estado en localStorage
+
+    .keyword {
+        font-weight: 700;
+        color: #64748b; /* Gris oscuro para las palabras conectoras */
+        text-transform: lowercase;
+        font-family: 'Courier New', Courier, monospace; /* Toque de código */
+    }
+    
+    .keyword::first-letter {
+        text-transform: uppercase;
+    }
+
+    /* Estilos de las píldoras de datos */
+    .data-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 500;
+        border: 1px solid transparent;
+    }
+
+    .pill-color {
+        background-color: #eff6ff;
+        color: #2563eb;
+        border-color: #dbeafe;
+    }
+
+    .pill-shape {
+        background-color: #fdf2f8;
+        color: #db2777;
+        border-color: #fce7f3;
+    }
+
+    .pill-action {
+        background-color: #f0fdf4;
+        color: #16a34a;
+        border-color: #dcfce7;
+        font-weight: 600;
+        margin-left: auto; /* Empuja la acción a la derecha si hay espacio */
+    }
+
+    .pill-icon {
+        margin-right: 6px;
+        font-size: 0.9em;
+        opacity: 0.7;
+    }
+
+    /* Ajuste responsivo */
+    @media (max-width: 600px) {
+        .pill-action { margin-left: 0; width: 100%; justify-content: center; margin-top: 5px; }
+        .logic-row { justify-content: center; }
+    }
+</style>
+{% endblock %}
+
+{% block nav_left %}
+    <a href="{{ url_for('web.index') }}" class="header-btn">
+        <i class="fas fa-arrow-left"></i> Inicio
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="dashboard-grid">
+        
+        <div class="card-panel dashboard-card">
+            <h2><i class="fas fa-microchip"></i> Hardware</h2>
+            
+            <div style="margin: 1rem 0; text-align: left;">
+                <p><strong>Estado:</strong> <span id="status-badge" class="status-badge status-disconnected">Desconectado</span></p>
+                <p style="margin-top: 5px;"><strong>Puerto:</strong> <span id="port">N/A</span></p>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="search-ports-btn" class="btn-primary" style="font-size: 0.9rem; width: 100%;">
+                    <i class="fas fa-search"></i> Buscar Puertos
+                </button>
+            </div>
+            
+            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                <select id="ports-list" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; flex: 1; display: none;"></select>
+                <button id="connect-btn" class="btn-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem; display: none; background-color: #2563eb;">
+                    Conectar
+                </button>
+            </div>
+            
+            <p id="hmi-status" style="margin-top: 10px; font-size: 0.8rem; color: #64748b;">HMI: Esperando...</p>
+        </div>
+
+        <div class="card-panel dashboard-card">
+            <h2><i class="fas fa-play-circle"></i> Ejecución</h2>
+            
+            <div style="margin-top: 1.5rem;">
+                <button id="btnEjecutar" class="action-btn-large btn-green" onclick="iniciarEjecucion()">
+                    <i class="fas fa-play"></i> INICIAR PROCESO
+                </button>
+                <button id="btnDetener" class="action-btn-large btn-red" onclick="detenerEjecucion()" style="display: none;">
+                    <i class="fas fa-stop"></i> DETENER PROCESO
+                </button>
+            </div>
+
+            <div class="log-console" id="currentAction">
+                > Sistema listo.
+            </div>
+        </div>
+
+        <div class="card-panel full-width-card">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;"><i class="fas fa-tools"></i> Herramientas y Configuración</h2>
+            
+            <div class="nav-grid">
+                <a href="{{ url_for('web.entrenar') }}" class="nav-card">
+                    <i class="fas fa-camera"></i> Entrenar IA
+                </a>
+                <a href="{{ url_for('web.configurar_movimientos') }}" class="nav-card">
+                    <i class="fas fa-robot"></i> Movimientos (Manual)
+                </a>
+                <a href="{{ url_for('web.configurar_movimientos_CI') }}" class="nav-card">
+                    <i class="fas fa-calculator"></i> Movimientos (C.I.)
+                </a>
+                <a href="{{ url_for('web.configurar_logica') }}" class="nav-card">
+                    <i class="fas fa-brain"></i> Lógica
+                </a>
+                <a href="{{ url_for('web.subir_modelo', origen='panel') }}" class="nav-card">
+                    <i class="fas fa-upload"></i> Subir Modelos
+                </a>
+                <a href="{{ url_for('web.verificar_reconocimiento') }}" class="nav-card">
+                    <i class="fas fa-eye"></i> Verificar
+                </a>
+            </div>
+        </div>
+
+        <div class="card-panel dashboard-card" style="text-align: left;">
+            <h3 style="color: var(--primary-color); margin-bottom: 10px;"><i class="fas fa-cubes"></i> Etiquetas Cargadas</h3>
+            {% if model_loaded %}
+            <div style="margin-bottom: 15px;">
+                <strong style="color:#64748b; font-size:0.85rem; text-transform:uppercase;">Modelo 1 (Formas)</strong>
+                <div style="margin-top:5px; display:flex; flex-wrap:wrap; gap:5px;">
+                    {% for label in form_labels %} 
+                        <span class="label-cleaner" data-raw="{{ label }}" style="background:#f1f5f9; padding:2px 8px; border-radius:4px; font-size:0.85rem; border:1px solid #e2e8f0;">{{ label }}</span> 
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <strong style="color:#64748b; font-size:0.85rem; text-transform:uppercase;">Modelo 2 (Colores)</strong>
+                <div style="margin-top:5px; display:flex; flex-wrap:wrap; gap:5px;">
+                    {% for label in color_labels %} 
+                        <span class="label-cleaner" data-raw="{{ label }}" style="background:#f1f5f9; padding:2px 8px; border-radius:4px; font-size:0.85rem; border:1px solid #e2e8f0;">{{ label }}</span> 
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p style="color: #ef4444; font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> Modelos no cargados.</p>
+            {% endif %}
+        </div>
+
+        <div class="card-panel dashboard-card" style="text-align: left;">
+            <h3 style="color: var(--primary-color); margin-bottom: 15px;"><i class="fas fa-list-alt"></i> Reglas Activas</h3>
+            
+            {% if logic_config %}
+            <div class="logic-container">
+                {% for rule in logic_config %}
+                <div class="logic-row rule-row">
+                    <span class="keyword">Si</span>
+                    
+                    <div class="data-pill pill-color col-color" data-raw="{{ rule.color }}">
+                        {{ rule.color }}
+                    </div>
+                    
+                    <span class="keyword">y</span>
+                    
+                    <div class="data-pill pill-shape col-shape" data-raw="{{ rule.shape }}">
+                         {{ rule.shape }}
+                    </div>
+
+                    <span class="keyword">entonces</span>
+
+                    <div class="data-pill pill-action col-action" data-raw="{{ rule.movement }}">
+                        {{ rule.movement }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 20px; color: #64748b; background: #f8fafc; border-radius: 8px;">
+                <p>Sin reglas definidas.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- GESTIÓN DEL ESTADO VISUAL ---
     function guardarEstado() {
-      const estado = {
-        btnEjecutarVisible: document.getElementById("btnEjecutar").style.display !== "none",
-        btnDetenerVisible: document.getElementById("btnDetener").style.display !== "none",
-        currentAction: document.getElementById("currentAction").innerText,
-        status: document.getElementById("status").innerText,
-        port: document.getElementById("port").innerText
-      };
-      localStorage.setItem("estadoAplicacion", JSON.stringify(estado));
+        const btnEjecutar = document.getElementById("btnEjecutar");
+        const btnDetener = document.getElementById("btnDetener");
+        const estado = {
+            ejecutando: btnDetener.style.display !== "none",
+            log: document.getElementById("currentAction").innerText,
+            status: document.getElementById("status-badge").innerText,
+            port: document.getElementById("port").innerText
+        };
+        localStorage.setItem("estadoApp", JSON.stringify(estado));
     }
 
-    // Función para restaurar el estado desde localStorage
     function restaurarEstado() {
-      const estadoGuardado = localStorage.getItem("estadoAplicacion");
-      if (estadoGuardado) {
-        const estado = JSON.parse(estadoGuardado);
-        document.getElementById("btnEjecutar").style.display = estado.btnEjecutarVisible ? "inline-block" : "none";
-        document.getElementById("btnDetener").style.display = estado.btnDetenerVisible ? "inline-block" : "none";
-        document.getElementById("currentAction").innerText = estado.currentAction;
-        document.getElementById("status").innerText = estado.status;
-        document.getElementById("port").innerText = estado.port;
-      }
+        const guardado = JSON.parse(localStorage.getItem("estadoApp"));
+        if (guardado) {
+            if (guardado.ejecutando) {
+                document.getElementById("btnEjecutar").style.display = "none";
+                document.getElementById("btnDetener").style.display = "inline-flex";
+            }
+            document.getElementById("currentAction").innerText = guardado.log || "> Sistema listo.";
+            document.getElementById("port").innerText = guardado.port || "N/A";
+            updateStatusBadge(guardado.status === 'Conectado');
+        }
     }
 
-    // Restaurar estado al cargar la página
+    function updateStatusBadge(isConnected) {
+        const badge = document.getElementById("status-badge");
+        if (isConnected) {
+            badge.textContent = "Conectado";
+            badge.className = "status-badge status-connected";
+        } else {
+            badge.textContent = "Desconectado";
+            badge.className = "status-badge status-disconnected";
+        }
+    }
+
+    // --- LIMPIEZA DE ETIQUETAS (Lógica Genérica) ---
+    function cleanLabel(rawText) {
+        // Elimina solo los números iniciales y espacios (ej: "0 cuadrado" -> "Cuadrado")
+        if (!rawText) return "---";
+        return rawText.replace(/^\d+\s*/, '').charAt(0).toUpperCase() + rawText.replace(/^\d+\s*/, '').slice(1);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      restaurarEstado();
-      const dropdownButtons = document.querySelectorAll('.menu-button');
-      const searchPortsBtn = document.getElementById('search-ports-btn');
-      const portsList = document.getElementById('ports-list');
-      const connectBtn = document.getElementById('connect-btn');
-
-      dropdownButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const menu = button.nextElementSibling;
-          menu.classList.toggle('open');
+        restaurarEstado();
+        
+        // 1. Limpiar lista de etiquetas en tarjeta de Modelos
+        document.querySelectorAll('.label-cleaner').forEach(span => {
+            span.innerText = cleanLabel(span.getAttribute('data-raw'));
         });
-      });
 
-      document.addEventListener('click', (e) => {
-        const menus = document.querySelectorAll('.dropdown-menu');
-        menus.forEach(menu => {
-          if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) {
-            menu.classList.remove('open');
-          }
+        // 2. Limpiar Sentencias Lógicas
+        document.querySelectorAll('.rule-row').forEach(row => {
+            // Buscamos por las clases específicas col-color, col-shape, etc.
+            const shapeDiv = row.querySelector('.col-shape');
+            const colorDiv = row.querySelector('.col-color');
+            const actionDiv = row.querySelector('.col-action');
+
+            if(shapeDiv) {
+                shapeDiv.innerHTML = `<i class="fas fa-shapes pill-icon"></i> ${cleanLabel(shapeDiv.getAttribute('data-raw'))}`;
+            }
+            if(colorDiv) {
+                colorDiv.innerHTML = `<i class="fas fa-palette pill-icon"></i> ${cleanLabel(colorDiv.getAttribute('data-raw'))}`;
+            }
+            if(actionDiv) {
+                actionDiv.innerHTML = `<i class="fas fa-bolt pill-icon"></i> ${cleanLabel(actionDiv.getAttribute('data-raw'))}`;
+            }
         });
-      });
 
-      searchPortsBtn.addEventListener('click', () => {
-        fetch('/listar_puertos')
-          .then(response => response.json())
-          .then(ports => {
-            portsList.innerHTML = '';
-            ports.forEach(port => {
-              let option = document.createElement('option');
-              option.value = port;
-              option.text = port;
-              portsList.appendChild(option);
+        // --- LÓGICA DE CONEXIÓN Y PUERTOS ---
+        const searchBtn = document.getElementById('search-ports-btn');
+        const connectBtn = document.getElementById('connect-btn');
+        const portsSelect = document.getElementById('ports-list');
+
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+                fetch("{{ url_for('api.listar_puertos') }}")
+                    .then(r => r.json())
+                    .then(data => {
+                        portsSelect.innerHTML = '';
+                        if (data.length === 0) {
+                            portsSelect.add(new Option("No se encontraron puertos", ""));
+                        } else {
+                            data.forEach(p => portsSelect.add(new Option(p, p)));
+                        }
+                        portsSelect.style.display = 'block';
+                        connectBtn.style.display = 'inline-block';
+                        searchBtn.innerHTML = '<i class="fas fa-search"></i> Buscar Puertos';
+                    })
+                    .catch(e => {
+                        alert("Error al buscar puertos: " + e);
+                        searchBtn.innerHTML = '<i class="fas fa-search"></i> Buscar Puertos';
+                    });
             });
-            portsList.style.display = 'block';
-            connectBtn.style.display = 'block';
-          });
-      });
+        }
 
-      connectBtn.addEventListener('click', () => {
-        const selectedPort = portsList.value;
-        const encodedPort = encodeURIComponent(selectedPort.replace('/dev/', ''));
-        fetch(`/conectar_serial/${encodedPort}`, { method: 'POST' })
-          .then(response => {
-            if (response.ok) return response.text();
-            throw new Error('Error en conexión');
-          })
-          .then(message => alert(message))
-          .catch(error => alert(`Error: ${error.message}`));
-      });
+        if (connectBtn) {
+            connectBtn.addEventListener('click', () => {
+                const port = portsSelect.value;
+                if (!port) return;
+                const encodedPort = encodeURIComponent(port);
+
+                fetch("{{ url_for('api.conectar_serial', puerto='') }}" + encodedPort, { method: 'POST' })
+                .then(r => {
+                    if (!r.ok) throw new Error("Error en conexión");
+                    return r.text();
+                })
+                .then(msg => {
+                    alert("✅ " + msg);
+                    updateStatusBadge(true);
+                    document.getElementById("port").innerText = port;
+                    guardarEstado();
+                })
+                .catch(err => {
+                    alert("❌ Error: " + err.message);
+                });
+            });
+        }
     });
 
+    // --- FUNCIONES DE EJECUCIÓN ---
     function iniciarEjecucion() {
-      Promise.all([
-        fetch('/status_connection').then(r => r.json()),
-        fetch('/status_camera').then(r => r.json()).catch(() => ({ connected: true }))
-      ])
-      .then(([serialStatus, cameraStatus]) => {
-        if (serialStatus.connected && cameraStatus.connected) {
-          fetch('/iniciar_ejecucion', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accion: 'iniciar' })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'enviado') {
-              document.getElementById("btnEjecutar").style.display = "none";
-              document.getElementById("btnDetener").style.display = "inline-block";
-              guardarEstado();
-            } else {
-              alert('Error: No se pudo enviar la instrucción de inicio.');
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('Error al conectarse con el servidor');
-          });
-        } else {
-          let mensaje = '';
-          if (!serialStatus.connected && !cameraStatus.connected) {
-            mensaje = 'Error: No hay conexión serial ni de cámara activa.';
-          } else if (!serialStatus.connected) {
-            mensaje = 'Error: No hay conexión serial activa.';
-          } else if (!cameraStatus.connected) {
-            mensaje = 'Error: La cámara no está conectada.';
-          }
-          alert(mensaje);
-        }
-      })
-      .catch(err => {
-        console.error('Error al obtener estados de conexión:', err);
-        alert('Error al verificar el estado de conexión');
-      });
+        document.getElementById("btnEjecutar").style.display = "none";
+        document.getElementById("btnDetener").style.display = "inline-flex";
+        document.getElementById("currentAction").innerText = "> Iniciando secuencia automática...";
+        guardarEstado();
+
+        fetch("{{ url_for('api.iniciar_ejecucion_route') }}", { method: "POST" })
+            .then(r => r.json())
+            .then(data => console.log("Estado:", data.status))
+            .catch(e => {
+                console.error(e);
+                alert("Error al iniciar ejecución");
+            });
     }
 
     function detenerEjecucion() {
-      fetch('/detener_ejecucion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accion: 'detener' })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'enviado') {
-          document.getElementById("btnDetener").style.display = "none";
-          document.getElementById("btnEjecutar").style.display = "inline-block";
-          guardarEstado();
-        } else {
-          alert('Error: No se pudo enviar la instrucción de detención.');
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        alert('Error al conectarse con el servidor');
-      });
+        document.getElementById("btnDetener").style.display = "none";
+        document.getElementById("btnEjecutar").style.display = "inline-flex";
+        document.getElementById("currentAction").innerText = "> Secuencia detenida por usuario.";
+        guardarEstado();
+
+        fetch("{{ url_for('api.detener_ejecucion_route') }}", { method: "POST" })
+            .catch(e => console.error(e));
     }
 
-    // Actualizar logs cada 3 segundos
-    function actualizarLogs() {
-      fetch('/logs')
-        .then(response => response.json())
-        .then(data => {
-          const logs = data.logs.split('\n');
-          const filteredLogs = logs.filter(line => !line.includes('HTTP/1.1'));
-          const lastLog = filteredLogs[filteredLogs.length - 1] || "Esperando acción...";
-          document.getElementById("currentAction").innerText = lastLog;
-          guardarEstado();
-        })
-        .catch(error => console.error('Error al obtener logs:', error));
-    }
-    setInterval(actualizarLogs, 3000);
+    // POLLING DE ESTADO
+    setInterval(() => {
+        fetch("{{ url_for('api.status_connection') }}")
+            .then(r => r.json())
+            .then(data => {
+                updateStatusBadge(data.connected);
+                if(data.port) document.getElementById("port").innerText = data.port;
+            })
+            .catch(e => console.log("Silent polling error"));
+    }, 3000);
 
-    // Actualizar estado cada 3 segundos
-    function actualizarEstado() {
-      fetch('/status_connection')
-        .then(response => response.json())
-        .then(data => {
-          const statusSpan = document.getElementById('status');
-          const portSpan = document.getElementById('port');
-          if (data.connected) {
-            statusSpan.textContent = 'Conectado';
-            portSpan.textContent = data.port;
-          } else {
-            statusSpan.textContent = 'Desconectado';
-            portSpan.textContent = 'N/A';
-          }
-          const hmiStatusP = document.getElementById('hmi-status');
-          hmiStatusP.textContent = 'HMI: Desconectado';
-          guardarEstado();
-        })
-        .catch(err => console.error('Error al obtener estado de conexión:', err));
-    }
-    setInterval(actualizarEstado, 3000);
-  </script>
-</head>
-<body>
-  <header class="header">
-    <a href="{{ url_for('index') }}" class="btn-back">
-      <i class="fas fa-arrow-left"></i> Regresar
-    </a>
-    <h1 class="main-title">Opciones del Módulo</h1>
-    <div class="menu-container">
-      <div class="menu-item">
-        <button class="menu-button config-button">
-          <i class="fas fa-cogs"></i>
-        </button>
-        <div class="dropdown-menu">
-          <a href="{{ url_for('entrenar') }}">Entrenar</a>
-          <a href="{{ url_for('configurar_movimientos') }}">C. Directa Config. Movs</a>
-          <a href="{{ url_for('configurar_movimientos_CI') }}">C. Inversa Config. Movs</a>
-          <a href="{{ url_for('configurar_logica') }}">Configurar Lógica</a>
-          <a href="{{ url_for('subir_modelo') }}">Subir Modelos</a>
-          <a href="{{ url_for('verificar_reconocimiento') }}">Verificar Reconocimiento</a>
-        </div>
-      </div>
-      <div class="menu-item">
-        <button class="menu-button connection-button">
-          <i class="fas fa-network-wired"></i>
-        </button>
-        <div class="dropdown-menu">
-          <button id="search-ports-btn">Buscar Puertos</button>
-          <select id="ports-list" style="width: 100%; display: none;"></select>
-          <button id="connect-btn" style="display: none;">Conectar</button>
-          <p id="hmi-status">HMI: Desconectado</p>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="main-content">
-    <section class="section">
-      <h2 class="section-title">Estado de Conexión</h2>
-      <p>Estado: <span id="status">Desconectado</span></p>
-      <p>Puerto: <span id="port">N/A</span></p>
-    </section>
-
-    <section class="section actions-section">
-      <h2 class="section-title">Acciones</h2>
-      <button id="btnEjecutar" class="btn-primary" style="background-color: green;" onclick="iniciarEjecucion()">
-        Ejecutar
-      </button>
-      <button id="btnDetener" class="btn-primary" style="background-color: red; display: none;" onclick="detenerEjecucion()">
-        Detener
-      </button>
-      <h3>Estado Actual</h3>
-      <div id="currentAction" style="font-size: 16px; font-weight: bold; color: #333; margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 5px;">
-        Esperando acción...
-      </div>
-    </section>
-    
-    <section id="model-info" class="section">
-      <h2 class="section-title">Modelos Entrenados</h2>
-      {% if model_loaded %}
-      <ul>
-        <li><strong>Formas:</strong>
-          <ul>
-            {% for label in form_labels %}
-            <li>{{ label }}</li>
-            {% endfor %}
-          </ul>
-        </li>
-        <li><strong>Colores:</strong>
-          <ul>
-            {% for label in color_labels %}
-            <li>{{ label }}</li>
-            {% endfor %}
-          </ul>
-        </li>
-      </ul>
-      {% else %}
-      <p>Modelos no cargados. Por favor, entrena y carga los modelos de formas y colores.</p>
-      {% endif %}
-    </section>
-
-    <section id="logic-config" class="section">
-      <h2 class="section-title">Lógica Configurada</h2>
-      {% if logic_config %}
-      <ul>
-        {% for rule in logic_config %}
-        <li>Si <strong>{{ rule.shape }}</strong> y <strong>{{ rule.color }}</strong>, entonces
-          <strong>{{ rule.movement }}</strong></li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p>No hay lógica configurada. Configúrala para que aparezca aquí.</p>
-      {% endif %}
-    </section>
-  </main>
-
-  <footer>
-    <p>© 2025 MODS MCT - Sistemas de Control</p>
-  </footer>
-</body>
-</html>
+</script>
+{% endblock %}

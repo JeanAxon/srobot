@@ -1,292 +1,165 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurar Movimientos - Cinemática Inversa</title>
-    <link rel="stylesheet" href="static/styles.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: #007bff;
-            padding: 10px 20px;
-            color: white;
-        }
-        .btn-back {
-            font-size: 24px;
-            text-decoration: none;
-            color: white;
-        }
-        .main-title {
-            flex-grow: 1;
-            font-size: 22px;
-            text-align: center;
-        }
-        .connection-status {
-            font-size: 14px;
-            padding: 5px 10px;
-            border-radius: 5px;
-            background-color: red;
-            color: white;
-        }
-        .section {
-            width: 90%;
-            max-width: 450px;
-            margin: 20px auto;
-            padding: 15px;
-            border-radius: 10px;
-            background-color: #f8f9fa;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        h2, h3 {
-            margin-bottom: 10px;
-        }
-        .control-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-        .control-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 300px;
-        }
-        .btn-group {
-            display: grid;
-            grid-template-columns: repeat(3, 50px);
-            gap: 5px;
-            justify-content: center;
-        }
-        button {
-            width: 50px;
-            height: 50px;
-            font-size: 18px;
-            border: none;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .angle-panel {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #e9ecef;
-            border-radius: 5px;
-        }
-        /* Nueva sección para estilo de los botones de paso */
-        .step-control {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 15px;
-        }
-        .step-control button {
-            width: 60px;
-        }
-        /* Slider de velocidad */
-        .speed-control {
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
+{% extends "layout/base.html" %}
 
-    <!-- 🔹 Encabezado -->
-    <header class="header">
-        <a href="{{ url_for('opciones') }}" class="btn-back">⬅</a>
-        <h1 class="main-title">Configurar Movimientos - Cinemática Inversa</h1>
-        <div class="connection-status" id="connection-status">🔴 Desconectado</div>
-    </header>
+{% block title %}Cinemática Inversa (XYZ){% endblock %}
 
-    <!-- 🔹 Sección: Movimiento Manual -->
-    <section class="section">
-        <h2>Movimiento Manual</h2>
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-        <!-- 🔸 Botones para cambiar el valor de pasoActual -->
-        <div class="step-control">
-            <button onclick="cambiarPaso(1)">Paso 1</button>
-            <button onclick="cambiarPaso(5)">Paso 5</button>
-            <button onclick="cambiarPaso(10)">Paso 10</button>
-        </div>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/configurar_movimientos.css') }}">
 
-        <!-- 🔸 Slider para la velocidad (0 a 100, inicia en 50) -->
-        <div class="speed-control">
-            <label for="speedRange">Velocidad:</label><br>
-            <input type="range" id="speedRange" min="0" max="100" value="50" oninput="updateSpeedValue()">
-            <span id="speedValue">50</span>
-        </div>
+<style>
+    /* Estilos extra específicos para inputs numéricos de CI (Jogging) */
+    .coord-control {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+    .coord-label { 
+        width: 50px; 
+        font-weight: bold; 
+        color: var(--primary-color); 
+        font-size: 0.9rem;
+    }
+    .coord-input { 
+        width: 70px !important; 
+        text-align: center; 
+        margin: 0 !important; 
+        font-weight: bold;
+    }
+    .btn-jog { 
+        padding: 5px 10px; 
+        background: #e2e8f0; 
+        border: 1px solid #cbd5e1;
+        border-radius: 4px; 
+        cursor: pointer; 
+        font-weight: bold;
+        color: #475569;
+        transition: all 0.1s;
+    }
+    .btn-jog:hover { background: #cbd5e1; color: #1e293b; }
+    .btn-jog:active { transform: translateY(1px); }
+</style>
+{% endblock %}
 
-        <!-- 🔹 Controles de Posición -->
-        <h3>Posición</h3>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>X: <span id="valor-x">0.00</span> mm</label>
-                <div class="btn-group">
-                    <button onclick="ajustarValor('x', -pasoActual)">◀</button>
-                    <button onclick="ajustarValor('x', pasoActual)">▶</button>
-                </div>
-            </div>
+{% block nav_left %}
+    <a href="{{ url_for('web.opciones') }}" class="header-btn">
+        <i class="fas fa-arrow-left"></i> Panel
+    </a>
+{% endblock %}
 
-            <div class="control-group">
-                <label>Y: <span id="valor-y">0.00</span> mm</label>
-                <div class="btn-group">
-                    <button onclick="ajustarValor('y', pasoActual)">⬆</button>
-                    <button onclick="ajustarValor('y', -pasoActual)">⬇</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <label>Z: <span id="valor-z">483.87</span> mm</label>
-                <div class="btn-group">
-                    <button onclick="ajustarValor('z', pasoActual)">▲</button>
-                    <button onclick="ajustarValor('z', -pasoActual)">▼</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 🔹 Controles de Orientación -->
-        <h3>Orientación</h3>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>Roll: <span id="valor-roll">0.00</span>°</label>
-                <div class="btn-group">
-                    <button onclick="ajustarValor('roll', -pasoActual)">⟲</button>
-                    <button onclick="ajustarValor('roll', pasoActual)">⟳</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <label>Pitch: <span id="valor-pitch">0.00</span>°</label>
-                <div class="btn-group">
-                    <button onclick="ajustarValor('pitch', -pasoActual)">⭠</button>
-                    <button onclick="ajustarValor('pitch', pasoActual)">⭢</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <label>Yaw: <span id="valor-yaw">-90.00</span>°</label>
-                <div class="btn-group">
-                    <button onclick="ajustarValor('yaw', -pasoActual)">⭣</button>
-                    <button onclick="ajustarValor('yaw', pasoActual)">⭡</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 🔹 Ángulos Calculados -->
-        <h3>Ángulos Calculados</h3>
-        <div class="angle-panel">
-            <p>Servo 1: <span id="servo-1">90.00</span>°</p>
-            <p>Servo 2: <span id="servo-2">90.00</span>°</p>
-            <p>Servo 3: <span id="servo-3">90.00</span>°</p>
-            <p>Servo 4: <span id="servo-4">90.00</span>°</p>
-            <p>Servo 5: <span id="servo-5">90.00</span>°</p>
-            <!-- Opcional: Mostrar tiempo de cálculo -->
-            <p>Tiempo de cálculo: <span id="tiempo-calculo">0.00</span> s</p>
-        </div>
-
-    </section>
-
-    <!-- 🔹 Pie de Página -->
-    <footer class="footer">
-        <p>© 2025 Sistema de Control - MODS MCT</p>
-    </footer>
-
-    <script>
-        let pasoActual = 1; // Valor inicial del paso
-
-        // Función para cambiar el tamaño del paso
-        function cambiarPaso(nuevoPaso) {
-            pasoActual = nuevoPaso;
-            console.log("Se cambió el paso a:", pasoActual);
-        }
-
-        // Función para actualizar el label de velocidad (slider)
-        function updateSpeedValue() {
-            let speedVal = document.getElementById("speedRange").value;
-            document.getElementById("speedValue").innerText = speedVal;
-            // Puedes llamar a enviarDatos() automáticamente si quieres recalcular
-            // enviarDatos();
-        }
-
-        // Función para ajustar los valores y disparar el cálculo
-        function ajustarValor(eje, delta) {
-            const elemento = document.getElementById(`valor-${eje}`);
-            let valor = parseFloat(elemento.innerText);
-            valor = parseFloat((valor + delta).toFixed(2));
-            elemento.innerText = valor.toFixed(2);
-            enviarDatos(); // Disparar cálculo inmediatamente
-        }
+{% block content %}
+<div class="control-grid">
     
-        // Función para enviar datos al servidor
-        function enviarDatos() {
-            // Tomamos la velocidad del slider
-            let speedVal = document.getElementById("speedRange").value;
+    <div class="card-panel area-controls">
+        <h3>
+            <span><i class="fas fa-ruler-combined"></i> Control XYZ</span>
+            <span id="status-ci" class="status-badge" style="background:#e0f2fe; color:#0284c7;">Listo</span>
+        </h3>
 
-            // Obtenemos la pose
-            const posicion = {
-                x: parseFloat($("#valor-x").text()) || 0,
-                y: parseFloat($("#valor-y").text()) || 0,
-                z: parseFloat($("#valor-z").text()) || 483.87,
-                roll: parseFloat($("#valor-roll").text()) || 0,
-                pitch: parseFloat($("#valor-pitch").text()) || 0,
-                yaw: parseFloat($("#valor-yaw").text()) || -90,
-                speed: parseInt(speedVal) // Añadimos la velocidad al JSON
-            };
-        
-            console.log("Enviando datos:", posicion);
+        <div class="servo-control-group">
+            <h4 style="font-size:0.9rem; color:#64748b; margin-bottom:10px;">Posición (mm)</h4>
             
-            $.ajax({
-                url: "/calcular_angulos",
-                method: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(posicion),
-                success: function(response) {
-                    console.log("Respuesta exitosa:", response);
-                    if (response.angulos) {
-                        actualizarAngulos(response.angulos, response.tiempo_calculo);
-                    } else if (response.error) {
-                        alert("Error: " + response.error);
-                    }
-                },
-                error: function(xhr) {
-                    console.error("Error en la solicitud:", xhr.responseText);
-                    alert("Error de comunicación con el servidor");
-                }
-            });
-        }
-    
-        // Función para actualizar la interfaz con los nuevos ángulos
-        function actualizarAngulos(angulos, tiempo_calculo) {
-            // Asumiendo que 'angulos' es un array de 5 elementos
-            document.getElementById("servo-1").innerText = angulos[0].toFixed(2);
-            document.getElementById("servo-2").innerText = angulos[1].toFixed(2);
-            document.getElementById("servo-3").innerText = angulos[2].toFixed(2);
-            document.getElementById("servo-4").innerText = angulos[3].toFixed(2);
-            document.getElementById("servo-5").innerText = angulos[4].toFixed(2);
+            {% for axis in ['x', 'y', 'z'] %}
+            <div class="coord-control">
+                <span class="coord-label">{{ axis|upper }}</span>
+                <button class="btn-jog" onclick="ajustarValor('{{ axis }}', -5)"><i class="fas fa-minus"></i></button>
+                <input type="number" id="val-{{ axis }}" class="coord-input" value="0">
+                <button class="btn-jog" onclick="ajustarValor('{{ axis }}', 5)"><i class="fas fa-plus"></i></button>
+            </div>
+            {% endfor %}
+        </div>
 
-            // Mostrar tiempo de cálculo (si viene en la respuesta)
-            if (tiempo_calculo !== undefined) {
-                document.getElementById("tiempo-calculo").innerText = tiempo_calculo.toFixed(4);
-            }
-        }
+        <div class="servo-control-group" style="margin-top:10px;">
+            <h4 style="font-size:0.9rem; color:#64748b; margin-bottom:10px;">Orientación (Grados)</h4>
+            
+            {% for angle in ['roll', 'pitch', 'yaw'] %}
+            <div class="coord-control">
+                <span class="coord-label">{{ angle|capitalize }}</span>
+                <button class="btn-jog" onclick="ajustarValor('{{ angle }}', -5)"><i class="fas fa-minus"></i></button>
+                <input type="number" id="val-{{ angle }}" class="coord-input" value="0">
+                <button class="btn-jog" onclick="ajustarValor('{{ angle }}', 5)"><i class="fas fa-plus"></i></button>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="servo-control-group" style="margin-top:10px;">
+            <div class="slider-label"><span>Gripper</span></div>
+            <div class="gripper-btn-group">
+                <button id="gripper-open" class="gripper-btn active">Abrir</button>
+                <button id="gripper-close" class="gripper-btn">Cerrar</button>
+            </div>
+        </div>
+
+        <div style="margin-top:15px;">
+            <button id="btn-calcular-mover" class="btn-primary" style="width:100%; justify-content:center;">
+                <i class="fas fa-calculator"></i> Calcular y Mover
+            </button>
+            <p style="font-size:0.75rem; color:#64748b; margin-top:5px; text-align:center;">
+                El "Fantasma" muestra la posición objetivo.<br>
+                El robot real se moverá al confirmar.
+            </p>
+        </div>
+    </div>
+
+    <div class="card-panel area-sim">
+        <div class="sim-header">
+            <h3><i class="fas fa-cube"></i> Previsualización</h3>
+            <button id="btn-area-trabajo" class="header-btn" style="color:#64748b; background:white; border:1px solid #cbd5e1; padding:4px 10px;">
+                <i class="fas fa-border-all"></i> Área
+            </button>
+        </div>
+        <div id="robot-simulation"></div>
+    </div>
+
+    <div class="card-panel area-data">
+        <h3><span><i class="fas fa-microchip"></i> Solución (Ángulos)</span></h3>
+        <div class="kinematics-info" id="angulos-resultado">
+            <span>Base: <b id="res-s1">-</b></span>
+            <span>Hombro: <b id="res-s2">-</b></span>
+            <span>Codo: <b id="res-s3">-</b></span>
+            <span>M.Vert: <b id="res-s4">-</b></span>
+            <span>M.Rot: <b id="res-s5">-</b></span>
+        </div>
+        
+        <div style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+            <input type="text" id="point-name" placeholder="Nombre P. Interés">
+            <button id="save-point-btn" class="btn-primary" style="width:100%; margin-top:5px;">
+                <i class="fas fa-map-pin"></i> Guardar Coordenada
+            </button>
+        </div>
+        <ul id="saved-points-list" class="movement-list" style="margin-top:10px; max-height:150px;"></ul>
+    </div>
     
-        // Al cargar la página, enviamos datos iniciales para calcular ángulos
-        $(document).ready(function() {
-            enviarDatos();
-        });
-    </script>
-</body>
-</html>
+    <div class="card-panel area-sequence">
+        <h3><span><i class="fas fa-layer-group"></i> Ruta Cartesiana</span></h3>
+        <ul id="positions-list" class="movement-list">
+            <li class="movement-item">Sin pasos</li>
+        </ul>
+        <div style="margin-top: 10px; display:flex; gap:5px;">
+             <button id="save-position" class="btn-primary" style="flex:1; font-size:0.8rem;">+ Paso</button>
+             <button id="save-movement" class="btn-primary" style="flex:1; background:var(--success-color); font-size:0.8rem;">Guardar Ruta</button>
+        </div>
+        <input type="text" id="movement-name" placeholder="Nombre Ruta..." style="margin-top:5px;">
+    </div>
+    
+    <div class="card-panel area-library" style="grid-column: 1 / -1;">
+        <h3>Biblioteca de Movimientos (Solo lectura en modo CI)</h3>
+        <ul id="movements-list" class="movement-list" style="max-height:150px;"></ul>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/robot_api.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/robot_sim.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/kinematics.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/robot_main_ci.js') }}"></script>
+{% endblock %}

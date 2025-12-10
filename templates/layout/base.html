@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}S-Robot{% endblock %} | Módulo Didáctico</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            {% block nav_left %}{% endblock %}
+        </div>
+
+        <div class="header-center">
+            <h1>Módulo Didáctico</h1>
+            <h3>Selección de Objetos por Color y Morfología</h3>
+        </div>
+
+        <div class="header-right">
+            </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-wrapper">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2025 MODS MCT | <span id="connection-status">Verificando...</span></p>
+    </footer>
+
+    <script>
+        async function checkConnection() {
+            try {
+                const response = await fetch("{{ url_for('api.status_connection') }}");
+                const data = await response.json();
+                const statusSpan = document.getElementById('connection-status');
+                if(data.connected) {
+                    statusSpan.textContent = "Conectado ✅";
+                    statusSpan.style.color = "#4caf50"; 
+                } else {
+                    statusSpan.textContent = "Desconectado ⚠️";
+                    statusSpan.style.color = "#ff9800"; 
+                }
+            } catch (e) { 
+                const s = document.getElementById('connection-status');
+                s.textContent = "Offline 🔴";
+                s.style.color = "#ff4444";
+            }
+        }
+        setInterval(checkConnection, 5000);
+        checkConnection();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

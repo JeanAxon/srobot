@@ -1,54 +1,137 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verificar Reconocimiento</title>
-  <!-- Archivo CSS global -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  <!-- Archivo CSS específico -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='configurar_movimientos.css') }}">
-</head>
-<body>
-  <!-- Encabezado con el mismo tamaño y estilos que en Configurar Movimientos -->
-  <header class="header-configurar">
-    <a href="{{ url_for('opciones') }}" class="btn-back">Regresar</a>
-    <h1>Verificación de Reconocimiento</h1>
-    <div class="connection-status">
-      <p id="connection-status-text">Verificando conexión...</p>
+{% extends "layout/base.html" %}
+
+{% block title %}Verificar Reconocimiento{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+    /* Estilos específicos para centrar y embellecer el monitor */
+    .monitor-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        padding: 20px;
+    }
+    
+    .monitor-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 1.5rem;
+        width: 100%;
+        max-width: 900px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
+
+    .monitor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .monitor-header h2 {
+        font-size: 1.5rem;
+        color: var(--primary-color);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .video-frame {
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #cbd5e1;
+        background-color: #000;
+        position: relative;
+        min-height: 480px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-frame img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    /* Badge de estado de conexión */
+    .connection-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background-color: #f1f5f9;
+        color: #64748b;
+        transition: all 0.3s ease;
+    }
+    
+    .status-ok { background-color: #dcfce7; color: #166534; }
+    .status-err { background-color: #fee2e2; color: #991b1b; }
+
+</style>
+{% endblock %}
+
+{% block nav_left %}
+    <a href="{{ url_for('web.opciones') }}" class="header-btn">
+        <i class="fas fa-arrow-left"></i> Panel
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="monitor-container">
+    <div class="monitor-card">
+        
+        <div class="monitor-header">
+            <h2><i class="fas fa-video"></i> Monitor en Vivo</h2>
+            <div id="connection-badge" class="connection-badge">
+                Verificando conexión...
+            </div>
+        </div>
+
+        <div class="video-frame">
+            <img src="{{ url_for('web.video_feed') }}" alt="Cargando video..." 
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\'color:white\'>Cámara no disponible</p>'">
+        </div>
+
+        <p style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;">
+            Visualización directa del flujo de video procesado.
+        </p>
     </div>
-    <div id="feedback-message"></div>
-  </header>
+</div>
+{% endblock %}
 
-  <!-- Contenedor principal -->
-  <main class="config-container">
-    <!-- Sección de la cámara -->
-    <div class="camera-container" style="width: 100%; text-align: center; padding: 1rem; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <img id="camera-feed" src="{{ url_for('video_feed') }}" alt="Cámara en vivo" style="max-width: 100%; border-radius: 8px;">
-    </div>
-  </main>
+{% block scripts %}
+<script>
+    function checkConnection() {
+        fetch("{{ url_for('api.status_connection') }}")
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById("connection-badge");
+                if (data.connected) {
+                    badge.textContent = `Conectado (${data.port})`;
+                    badge.className = "connection-badge status-ok";
+                } else {
+                    badge.textContent = "Desconectado";
+                    badge.className = "connection-badge status-err";
+                }
+            })
+            .catch(err => {
+                const badge = document.getElementById("connection-badge");
+                badge.textContent = "Error de API";
+                badge.className = "connection-badge status-err";
+                console.error("Error conexión:", err);
+            });
+    }
 
-  <footer style="text-align: center; padding: 1rem 0; background-color: #f5f5f5;">
-    <p>&copy; 2025 Sistema de Control - MODS MCT</p>
-  </footer>
-
-  <!-- Script para actualizar el estado de conexión -->
-  <script>
-    // Función para obtener el estado de conexión desde el backend
-    fetch("{{ url_for('status_connection') }}")
-      .then(response => response.json())
-      .then(data => {
-        const statusText = document.getElementById("connection-status-text");
-        if (data.connected) {
-          statusText.textContent = `Conexión establecida en puerto ${data.port}`;
-        } else {
-          statusText.textContent = "No hay conexión serial activa.";
-        }
-      })
-      .catch(err => {
-        document.getElementById("connection-status-text").textContent = "Error al verificar la conexión";
-        console.error("Error al obtener estado de conexión:", err);
-      });
-  </script>
-</body>
-</html>
+    checkConnection();
+    setInterval(checkConnection, 5000);
+</script>
+{% endblock %}

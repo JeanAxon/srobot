@@ -1,0 +1,3 @@
+Nombre: puntox
+Posicion: X=59.33, Y=26.41, Z=415.92
+Orientacion: Roll=16.08°, Pitch=-48.01°, Yaw=-177.2°

@@ -1,100 +1,129 @@
-import numpy as np
-from cinematica_directa import forward_kinematics
+import math
 
-# ========================== FUNCIÓN CINEMÁTICA INVERSA CCD ULTRA PRECISA ========================== #
-def cinematica_inversa_CCD(target_pos, max_iter=1200, tol_pos=0.2, tol_orient=0.3):
-    """
-    Resuelve la cinemática inversa usando CCD con refinamiento avanzado para orientación.
+# ==========================================
+# CONFIGURACIÓN FÍSICA DEL ROBOT (Medidas en cm o mm)
+# ==========================================
+# Basado en tu archivo config.js y Brazo_Robotico.html
+# Asegúrate de que estas unidades coincidan con lo que envías (mm recomendado)
 
-    target_pos: Diccionario {'x':X, 'y':Y, 'z':Z, 'roll':R, 'pitch':P, 'yaw':Y}
-    max_iter: Número máximo de iteraciones.
-    tol_pos: Tolerancia para la convergencia en posición (mm).
-    tol_orient: Tolerancia para la convergencia en orientación (grados).
-    """
-    q_actual = np.radians([90, 90, 90, 90, 90])  # Iniciamos en Home
-    sin_mejora = 0  # Contador de iteraciones sin mejora
-    fase_orientacion = False  # Fase de ajuste fino de orientación
-
-    for iteracion in range(max_iter):
-        estado_actual = forward_kinematics(np.degrees(q_actual))
-
-        # 🔹 Extraemos solo X, Y, Z y orientación
-        pos_actual = np.array([estado_actual['x'], estado_actual['y'], estado_actual['z']])
-        orient_actual = np.array([estado_actual['roll'], estado_actual['pitch'], estado_actual['yaw']])
-        
-        pos_objetivo = np.array([target_pos['x'], target_pos['y'], target_pos['z']])
-        orient_objetivo = np.array([target_pos['roll'], target_pos['pitch'], target_pos['yaw']])
-
-        error_pos = np.linalg.norm(pos_objetivo - pos_actual)  # Error en posición (mm)
-        error_orient = np.linalg.norm(orient_objetivo - orient_actual)  # Error en orientación (grados)
-
-        # 🔹 Si la posición es precisa pero la orientación no, pasamos a la fase de ajuste fino
-        if error_pos < tol_pos and not fase_orientacion:
-            print(f"🔄 Cambio de estrategia: Posición óptima alcanzada, refinando orientación.")
-            fase_orientacion = True  # Cambiamos a modo de ajuste de orientación
-
-        # 🔹 Si el error en posición y orientación está dentro de la tolerancia, devolvemos la solución
-        if error_pos < tol_pos and error_orient < tol_orient:
-            print(f"✅ Solución encontrada en {iteracion} iteraciones con error de {error_pos:.2f} mm y orientación {error_orient:.2f}°")
-            return np.degrees(q_actual)  # Devolver en grados
-
-        # 🔹 Ajustamos dinámicamente el paso
-        paso = np.radians(2) if error_pos > 10 else np.radians(0.8) if error_pos > 3 else np.radians(0.2)
-
-        mejor_error = error_pos + error_orient
-
-        # 🔹 CCD ahora se enfoca primero en posición, luego en orientación si es necesario
-        articulaciones = range(len(q_actual)) if fase_orientacion else reversed(range(len(q_actual)))
-
-        # 🔹 Ajustamos cada articulación
-        for i in articulaciones:
-            q_temp = q_actual.copy()
-            q_temp[i] += paso  # Mover la articulación en una dirección
-            estado_mas = forward_kinematics(np.degrees(q_temp))
-            pos_mas = np.array([estado_mas['x'], estado_mas['y'], estado_mas['z']])
-            orient_mas = np.array([estado_mas['roll'], estado_mas['pitch'], estado_mas['yaw']])
-            error_mas = np.linalg.norm(pos_mas - pos_objetivo) + np.linalg.norm(orient_mas - orient_objetivo)
-
-            q_temp[i] -= 2 * paso  # Mover en la otra dirección
-            estado_menos = forward_kinematics(np.degrees(q_temp))
-            pos_menos = np.array([estado_menos['x'], estado_menos['y'], estado_menos['z']])
-            orient_menos = np.array([estado_menos['roll'], estado_menos['pitch'], estado_menos['yaw']])
-            error_menos = np.linalg.norm(pos_menos - pos_objetivo) + np.linalg.norm(orient_menos - orient_objetivo)
-
-            # 🔹 Aplicamos la mejor modificación
-            if error_mas < mejor_error:
-                q_actual[i] += paso
-                mejor_error = error_mas
-                sin_mejora = 0
-            elif error_menos < mejor_error:
-                q_actual[i] -= paso
-                mejor_error = error_menos
-                sin_mejora = 0
-            else:
-                sin_mejora += 1
-
-        # 🔹 Si no mejora en 50 iteraciones, cambiamos la estrategia
-        if sin_mejora > 50:
-            print("🔄 Cambio de estrategia: aumentando paso momentáneamente.")
-            paso *= 1.5
-            sin_mejora = 0
-
-    print(f"⚠️ No se encontró solución exacta dentro de {max_iter} iteraciones, error final: {error_pos:.2f} mm y orientación {error_orient:.2f}°")
-    return np.degrees(q_actual)  # Devolver la mejor solución encontrada
+L_BASE = 5.0      # Altura de la base (d1)
+L_HOMBRO = 10.0   # Longitud del brazo (a2)
+L_ANTEBRAZO = 8.0 # Longitud del antebrazo (a3)
+L_MUNECA = 3.0    # Longitud de la mano/gripper hasta el TCP (d_wrist_tcp)
 
 def calcular_angulos(x, y, z, roll, pitch, yaw):
-    """Wrapper para manejar tipos de datos"""
+    """
+    Calcula la Cinemática Inversa para un brazo de 5GDL (sin Yaw de muñeca).
+    
+    Args:
+        x, y, z: Coordenadas del efector final.
+        pitch: Inclinación deseada de la muñeca (grados).
+               0 = Horizontal, -90 = Mirando abajo.
+        roll, yaw: Se ignoran para el cálculo geométrico (el Roll es passthrough).
+    
+    Returns:
+        list: [Angulo1, Angulo2, Angulo3, Angulo4] o None si es inalcanzable.
+    """
     try:
-        target_pos = {
-            'x': float(x),
-            'y': float(y),
-            'z': float(z),
-            'roll': float(roll),
-            'pitch': float(pitch),
-            'yaw': float(yaw)
-        }
-        angulos = cinematica_inversa_CCD(target_pos)
-        return angulos.tolist() if isinstance(angulos, np.ndarray) else angulos
+        # 1. Ángulo de la BASE (S1)
+        # ------------------------------------------------
+        # Es simplemente la rotación hacia el punto (x,y)
+        theta1 = math.atan2(y, x)
+        
+        # 2. Calcular el CENTRO DE LA MUÑECA (Wrist Center)
+        # ------------------------------------------------
+        # Retrocedemos desde el punto objetivo (TCP) una distancia L_MUNECA
+        # en la dirección del Pitch deseado.
+        pitch_rad = math.radians(pitch)
+        
+        # Proyección del retroceso en el plano horizontal y vertical
+        # Asumimos que el pitch es relativo al horizonte
+        dx = L_MUNECA * math.cos(pitch_rad) * math.cos(theta1)
+        dy = L_MUNECA * math.cos(pitch_rad) * math.sin(theta1)
+        dz = L_MUNECA * math.sin(pitch_rad)
+        
+        # Coordenadas del centro de la muñeca
+        wx = x - dx
+        wy = y - dy
+        wz = z - dz
+        
+        # 3. Problema Plano (Triángulo Hombro-Codo-Muñeca)
+        # ------------------------------------------------
+        # Distancia horizontal desde el eje del hombro hasta el centro de la muñeca
+        # r es la proyección radial en el suelo
+        r = math.sqrt(wx**2 + wy**2)
+        
+        # Altura de la muñeca respecto al hombro
+        # Restamos la altura de la base
+        h = wz - L_BASE
+        
+        # Distancia directa desde el hombro hasta la muñeca (hipotenusa)
+        c = math.sqrt(r**2 + h**2)
+        
+        # VALIDACIÓN: ¿Alcanza el brazo?
+        if c > (L_HOMBRO + L_ANTEBRAZO):
+            return None # El punto está demasiado lejos
+            
+        # 4. Ley de Cosenos para Hombro (S2) y Codo (S3)
+        # ------------------------------------------------
+        # Ángulo alfa (elevación del vector hombro-muñeca)
+        alpha = math.atan2(h, r)
+        
+        # Ángulo beta (triángulo interior por ley de cosenos)
+        cos_beta = (L_HOMBRO**2 + c**2 - L_ANTEBRAZO**2) / (2 * L_HOMBRO * c)
+        
+        # Protección matemática por errores de redondeo
+        cos_beta = max(-1, min(1, cos_beta))
+        beta = math.acos(cos_beta)
+        
+        # Theta2: Ángulo del Hombro
+        theta2 = alpha + beta 
+        
+        # Ángulo gamma (ángulo del codo interior)
+        cos_gamma = (L_HOMBRO**2 + L_ANTEBRAZO**2 - c**2) / (2 * L_HOMBRO * L_ANTEBRAZO)
+        cos_gamma = max(-1, min(1, cos_gamma))
+        gamma = math.acos(cos_gamma)
+        
+        # Theta3: Ángulo del Codo (relativo al brazo anterior)
+        # Nota: Depende de cómo estén montados tus servos (0 grados = recto o doblado?)
+        # Asumiremos configuración estándar: 0 es brazo estirado.
+        theta3 = gamma - math.pi 
+        
+        # 5. Ángulo de la Muñeca Vertical (S4)
+        # ------------------------------------------------
+        # La suma de los ángulos (Hombro + Codo + Muñeca) debe dar el Pitch global
+        # Pitch_Global = Theta2 + Theta3 + Theta4
+        theta4 = pitch_rad - (theta2 + theta3)
+        
+        # 6. Conversión a Grados y Mapeo a Servos (0-180)
+        # ------------------------------------------------
+        # Esto depende de tu hardware. Asumiremos:
+        # 90 grados es la posición "neutra" o "Home".
+        
+        ang_base = math.degrees(theta1)
+        ang_hombro = math.degrees(theta2)
+        ang_codo = math.degrees(theta3)
+        ang_muneca = math.degrees(theta4)
+
+        # AJUSTES DE HARDWARE (Mapeo Final)
+        # Ajusta estos offsets según cómo pusiste los horns de tus servos
+        
+        # Base: atan2 da -180 a 180. Mapeamos 0 -> 90.
+        s1 = 90 + ang_base 
+        
+        # Hombro: 90 es vertical.
+        s2 = 90 - ang_hombro # O + dependiendo del sentido de giro
+        
+        # Codo: 
+        s3 = 90 + ang_codo 
+        
+        # Muñeca: 
+        s4 = 90 + ang_muneca
+
+        # Retornamos los 4 ángulos calculados
+        # El Roll (s5) y Gripper (s6) se añaden en el JS o se pasan directo
+        return [s1, s2, s3, s4]
+        
     except Exception as e:
-        print(f"Error en cálculo de ángulos: {str(e)}")
-        return [90.0, 90.0, 90.0, 90.0, 90.0]
+        print(f"Error en cinemática: {e}")
+        return None

@@ -1,39 +1,40 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Módulo Didáctico</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
+{% extends "layout/base.html" %}
 
-    <header style="
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        text-align: center; 
-        background: linear-gradient(135deg, #004aad, #00aaff); 
-        color: white; 
-        padding: 15px; 
-        backdrop-filter: blur(10px);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.2);">
+{% block title %}Inicio{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    main.container {
+        justify-content: center; /* Centrado vertical */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="card-panel welcome-card">
         
-        <h1 style="margin-bottom: 5px;">Módulo Didáctico</h1>
-        <h3 style="margin-top: 0px;">Selección de Objetos por Color y Morfología</h3>
-    </header>
-
-    
-
-    <main>
-        <div class="welcome-container">
-            <p>Bienvenido, en esta interfaz podrás ejecutar y configurar el comportamiento del módulo.</p>
-            <a href="{{ url_for('opciones') }}" class="btn-primary">Comenzar</a>
+        <div class="welcome-icon">
+            <i class="fas fa-robot"></i>
         </div>
-    </main>
 
-    <footer>
-        <p>&copy; 2025 MODS MCT - Sistemas de Control</p>
-    </footer>
-</body>
-</html>
+        <h2 style="margin-bottom: 0.5rem;">Bienvenido</h2>
+        <h3 style="font-size: 1.1rem; color: #64748b; font-weight: normal; margin-bottom: 2rem;">
+            Sistema de Control Robótico Inteligente
+        </h3>
+        
+        <p style="font-size: 0.95rem; margin-bottom: 2.5rem; color: #475569;">
+            Plataforma didáctica para la configuración, entrenamiento y ejecución de movimientos basados en visión artificial y morfología.
+        </p>
+        
+        <div>
+            <a href="{{ url_for('web.opciones') }}" class="btn-primary" style="padding: 1rem 2.5rem; font-size: 1.1rem;">
+                Comenzar Sistema <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
+            </a>
+        </div>
+
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: #94a3b8;">
+            v2.5 Stable • MODS MCT
+        </div>
+    </div>
+{% endblock %}

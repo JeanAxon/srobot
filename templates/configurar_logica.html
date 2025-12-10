@@ -1,456 +1,329 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurar Lógica</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <style>
-        /* General styles */
-        html, body {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+{% extends "layout/base.html" %}
 
-        *, *::before, *::after {
-            box-sizing: inherit;
-        }
+{% block title %}Configurar Lógica{% endblock %}
 
-        body {
-            font-family: 'Roboto', Arial, sans-serif;
-            background-color: #f4f8fb;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            min-height: 100vh;
-            width: 100%;
-            overflow-x: hidden;
-        }
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    /* Estilos específicos que NO están en base.html */
+    
+    .config-wrapper {
+        max-width: 900px;
+        margin: 0 auto;
+    }
 
-        /* Header styles */
-        header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            background-color: #0066cc;
-            color: white;
-            padding: 10px 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            position: relative;
-            width: 100%;
-            box-sizing: border-box;
-        }
+    /* Tarjetas de configuración */
+    .config-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+    }
 
-        .btn-back {
-            display: flex; 
-            align-items: center; 
-            background-color: #ff6b6b;
-            color: white;
-            padding: 10px 20px;
-            font-size: 18px; 
-            border: none;
-            border-radius: 6px;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            flex-shrink: 0;
-        }
+    h2 {
+        color: var(--primary-color);
+        margin-top: 0;
+        border-bottom: 2px solid #f1f5f9;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+    }
 
-        .btn-back:hover {
-            background-color: #e63946;
-        }
+    /* Constructor de Reglas */
+    .rule-builder {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: center;
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px dashed #cbd5e1;
+    }
 
-        .btn-back i {
-            margin-right: 8px;
-            font-size: 24px;
-        }
+    .builder-group {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 150px;
+    }
 
-        .main-title {
-            margin: 0 auto;
-            font-size: 22px;
-            font-weight: bold;
-        }
+    .builder-group label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
 
-        /* Main content styles */
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            padding: 20px;
-        }
+    .dropdown {
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        font-size: 1rem;
+        background-color: white;
+    }
 
-        /* Section styles */
-        section {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 900px;
-            width: 90%;
-        }
+    .btn-container {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
 
-        section h2 {
-            margin-top: 0;
-            color: #0066cc;
-        }
+    /* Botones específicos */
+    .btn-add {
+        background-color: #f59e0b; /* Amber */
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-save {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        /* Rule container styles */
-        .rule {
-            display: grid;
-            grid-template-columns: auto 1fr auto 1fr auto 1fr;
-            gap: 0.5rem 1rem;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
+    /* Lista de Reglas */
+    .rules-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
 
-        .dropdown {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
+    .rule-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.2s;
+    }
 
-        /* Buttons styles */
-        .buttons-container {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-            margin-bottom: 2rem;
-        }
+    .rule-item:hover {
+        transform: translateX(5px);
+        border-color: #cbd5e1;
+    }
 
-        .btn-primary {
-            background-color: #0066cc;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+    .rule-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
 
-        .btn-primary:hover {
-            background-color: #004a99;
-        }
+    .keyword { font-weight: bold; color: #94a3b8; font-size: 0.9rem; }
 
-        .btn-secondary {
-            background-color: #f4a261;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+    /* Etiquetas visuales (Pills) */
+    .tag { padding: 4px 10px; border-radius: 4px; font-weight: 500; font-size: 0.9rem; }
+    .tag-shape { background: #fdf2f8; color: #db2777; }
+    .tag-color { background: #eff6ff; color: #2563eb; }
+    .tag-action { background: #f0fdf4; color: #16a34a; font-weight: 700; }
 
-        .btn-secondary:hover {
-            background-color: #e76f51;
-        }
+    .btn-delete { color: #ef4444; background: none; border: none; cursor: pointer; font-size: 1.1rem; }
+    .btn-delete:hover { color: #b91c1c; }
+</style>
+{% endblock %}
 
-        /* Rules list styles */
-        #rules-list ul {
-            list-style-type: none;
-            padding: 0;
-        }
+{% block nav_left %}
+    <a href="{{ url_for('web.opciones') }}" class="header-btn">
+        <i class="fas fa-arrow-left"></i> Panel
+    </a>
+{% endblock %}
 
-        #rules-list ul li {
-            background: #e6f7ff;
-            margin: 0.5rem 0;
-            padding: 0.75rem;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        #rules-list ul li span {
-            font-weight: bold;
-            width: 100%;
-            text-align: left;
-        }
-
-        .btn-edit, .btn-delete {
-            background-color: transparent;
-            color: #0066cc;
-            border: none;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
-        }
-
-        .btn-edit:hover, .btn-delete:hover {
-            color: #004a99;
-        }
-
-        /* Footer styles */
-        footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 10px 0;
-            width: 100%;
-        }
-
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .rule {
-                grid-template-columns: 1fr;
-            }
-
-            .btn-primary, .btn-secondary {
-                width: 100%;
-                margin: 0.5rem 0;
-            }
-
-            .buttons-container {
-                flex-direction: column;
-            }
-
-            #rules-list ul li {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <a href="{{ url_for('opciones') }}" class="btn-back">
-            <i class="fas fa-arrow-left"></i> Regresar
-        </a>
-        <h1 class="main-title">Configurar Lógica</h1>
-    </header>
-
-    <main>
-        <!-- Configuración de lógica -->
-        <section id="logic-configuration">
-        <h2>Reglas de Lógica</h2>
-        <p>Configure las reglas para el reconocimiento de objetos y movimientos del brazo:</p>
+{% block content %}
+    <div class="config-wrapper">
         
-        <!-- Contenedor de reglas -->
-        <div id="rules-container">
-            <div class="rule">
-                <label for="shape">Si:</label>
-                <select id="shape" class="dropdown">
-                    {% for label in form_labels %}
-                        <option value="{{ label }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
+        <div class="config-card">
+            <h2><i class="fas fa-plus-circle"></i> Nueva Regla</h2>
+            <p style="color: #64748b; margin-bottom: 1.5rem;">
+                Define qué debe hacer el robot cuando detecte una combinación específica.
+            </p>
+            
+            <div class="rule-builder">
+                <div class="builder-group">
+                    <label>Si detecto Forma:</label>
+                    <select id="shape" class="dropdown">
+                        {% for label in form_labels %}
+                            <option value="{{ label }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-                <label for="color">y:</label>
-                <select id="color" class="dropdown">
-                    {% for label in color_labels %}
-                        <option value="{{ label }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
+                <div class="builder-group">
+                    <label>Y el Color es:</label>
+                    <select id="color" class="dropdown">
+                        {% for label in color_labels %}
+                            <option value="{{ label }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-                <label for="movement">entonces:</label>
-                <select id="movement" class="dropdown">
-                    {% for movement in movimientos %}
-                        <option value="{{ movement }}">{{ movement }}</option>
-                    {% endfor %}
-                </select>
+                <div class="builder-group">
+                    <label>Entonces ejecutar:</label>
+                    <select id="movement" class="dropdown">
+                        {% for movement in movimientos %}
+                            <option value="{{ movement }}">{{ movement }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button id="add-rule-btn" class="btn-add">
+                    <i class="fas fa-plus"></i> Añadir a la Lista
+                </button>
             </div>
         </div>
 
-        <!-- Botones de interacción -->
-        <div class="buttons-container">
-            <button id="add-rule-btn" class="btn-secondary">Añadir Regla</button>
-            <button id="save-rules-btn" class="btn-primary">Guardar Configuración</button>
+        <div class="config-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; border: none; padding: 0;"><i class="fas fa-list-ul"></i> Reglas Activas</h2>
+                <button id="save-rules-btn" class="btn-save">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+            
+            <ul id="configured-rules" class="rules-list">
+                </ul>
+            
+            <p id="empty-msg" style="text-align: center; color: #94a3b8; margin-top: 20px; display: none;">
+                No hay reglas configuradas. Añade una arriba.
+            </p>
         </div>
-        </section>
 
-        <!-- Lista de reglas configuradas -->
-        <section id="rules-list">
-        <h2>Reglas Configuradas</h2>
-        <ul id="configured-rules">
-            <!-- Aquí se mostrarán las reglas configuradas dinámicamente -->
-        </ul>
-        </section>
-    </main>
+    </div>
+{% endblock %}
 
-    <footer>
-        <p>&copy; 2025 Sistema de Control - MODS MCT</p>
-    </footer>
+{% block scripts %}
+<script>
+    // Variables locales
+    let configuredRules = [];
+    const configuredRulesList = document.getElementById('configured-rules');
+    const emptyMsg = document.getElementById('empty-msg');
 
-    <script>
-        let nextRuleId = 1; // Variable global para asignar ID únicos a las reglas
-        const configuredRules = [];
-        const configuredRulesList = document.getElementById('configured-rules');
+    // Función estética: "0 cuadrado" -> "Cuadrado"
+    function cleanName(text) {
+        if(!text) return "??";
+        return text.replace(/^\d+\s*/, '').charAt(0).toUpperCase() + text.replace(/^\d+\s*/, '').slice(1);
+    }
 
-        // Añadir nueva regla
-        document.getElementById('add-rule-btn').addEventListener('click', () => {
-            const shape = document.getElementById('shape').value;
-            const color = document.getElementById('color').value;
-            const movement = document.getElementById('movement').value;
-            const ruleId = nextRuleId++;
-
-            const rule = { id: ruleId, shape, color, movement };
-            configuredRules.push(rule);
-
-            // Añadir a la lista visual
-            const listItem = document.createElement('li');
-            listItem.dataset.ruleId = ruleId;
-            listItem.dataset.shape = shape;
-            listItem.dataset.color = color;
-            listItem.dataset.movement = movement;
-            listItem.innerHTML = `
-                <span>Si ${shape} y ${color}, entonces ${movement}</span>
-                <button class="btn-edit" data-rule-id="${ruleId}">Editar</button>
-                <button class="btn-delete" data-rule-id="${ruleId}">Eliminar</button>
-            `;
-            configuredRulesList.appendChild(listItem);
-        });
-
-        // Guardar las reglas
-        document.getElementById('save-rules-btn').addEventListener('click', () => {
-            if (configuredRules.length === 0) {
-                alert('No hay reglas para guardar.');
-                return;
-            }
-
-            fetch('/guardar_logica', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(configuredRules)
-            })
-            .then(response => response.text())
+    // 1. CARGAR REGLAS AL INICIO (Usando rutas del backend original)
+    document.addEventListener('DOMContentLoaded', () => {
+        // Usamos la ruta original: /cargar_logica
+        fetch("{{ url_for('api.cargar_logica') }}")
+            .then(r => r.json())
             .then(data => {
-                alert(data);
+                configuredRules = data || [];
+                renderRules();
             })
-            .catch(error => {
-                console.error('Error al guardar las reglas:', error);
-                alert('Error al guardar las reglas. Inténtalo de nuevo.');
-            });
-        });
+            .catch(err => console.error("Error cargando reglas:", err));
+    });
 
-        // Evento delegado para botones Editar y Eliminar
-        configuredRulesList.addEventListener('click', (event) => {
-            const ruleElement = event.target.closest('li');
-
-            if (event.target.classList.contains('btn-edit')) {
-                handleEditRule(ruleElement);
-            } else if (event.target.classList.contains('btn-delete')) {
-                handleDeleteRule(ruleElement);
-            }
-        });
-
-        // Función para eliminar una regla
-        function handleDeleteRule(ruleElement) {
-            const ruleId = ruleElement.dataset.ruleId;
-            const index = configuredRules.findIndex(rule => rule.id === parseInt(ruleId));
-
-            if (index !== -1) {
-                configuredRules.splice(index, 1);
-                ruleElement.remove();
-                // Enviar solicitud DELETE al servidor aquí
-            }
+    // 2. RENDERIZAR LISTA
+    function renderRules() {
+        configuredRulesList.innerHTML = '';
+        
+        if (configuredRules.length === 0) {
+            emptyMsg.style.display = 'block';
+        } else {
+            emptyMsg.style.display = 'none';
         }
 
-        // Función para editar una regla
-        function handleEditRule(ruleElement) {
-            const ruleId = ruleElement.dataset.ruleId;
-            const currentShape = ruleElement.dataset.shape;
-            const currentColor = ruleElement.dataset.color;
-            const currentMovement = ruleElement.dataset.movement;
-
-            // Crear un contenedor para el formulario de edición
-            const editContainer = document.createElement('div');
-            editContainer.className = 'rule-edit';
-
-            // Formulario de edición
-            const form = document.createElement('form');
-            form.innerHTML = `
-                <label>Forma:</label>
-                <select id="edit-shape" class="dropdown"></select>
-                <label>Color:</label>
-                <select id="edit-color" class="dropdown"></select>
-                <label>Movimiento:</label>
-                <select id="edit-movement" class="dropdown"></select>
-                <button class="btn-save" type="button">Guardar</button>
-                <button class="btn-cancel" type="button">Cancelar</button>
+        configuredRules.forEach((rule, index) => {
+            const li = document.createElement('li');
+            li.className = 'rule-item';
+            
+            li.innerHTML = `
+                <div class="rule-text">
+                    <span class="keyword">Si</span> 
+                    <span class="tag tag-shape">${cleanName(rule.shape)}</span>
+                    <span class="keyword">y</span>
+                    <span class="tag tag-color">${cleanName(rule.color)}</span>
+                    <span class="keyword">entonces</span>
+                    <span class="tag tag-action">${cleanName(rule.movement)}</span>
+                </div>
+                <div class="rule-actions">
+                    <button class="btn-delete" onclick="deleteRule(${index})" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
             `;
+            configuredRulesList.appendChild(li);
+        });
+    }
 
-            // Clonar opciones desde los selectores principales
-            const shapeSelect = document.getElementById('shape');
-            const colorSelect = document.getElementById('color');
-            const movementSelect = document.getElementById('movement');
+    // 3. AÑADIR REGLA (Solo en memoria del navegador)
+    document.getElementById('add-rule-btn').addEventListener('click', () => {
+        const shape = document.getElementById('shape').value;
+        const color = document.getElementById('color').value;
+        const movement = document.getElementById('movement').value;
 
-            const editShape = form.querySelector('#edit-shape');
-            const editColor = form.querySelector('#edit-color');
-            const editMovement = form.querySelector('#edit-movement');
-
-            for (let option of shapeSelect.options) {
-                const clone = option.cloneNode(true);
-                if (clone.value === currentShape) clone.selected = true;
-                editShape.appendChild(clone);
-            }
-
-            for (let option of colorSelect.options) {
-                const clone = option.cloneNode(true);
-                if (clone.value === currentColor) clone.selected = true;
-                editColor.appendChild(clone);
-            }
-
-            for (let option of movementSelect.options) {
-                const clone = option.cloneNode(true);
-                if (clone.value === currentMovement) clone.selected = true;
-                editMovement.appendChild(clone);
-            }
-
-            editContainer.appendChild(form);
-
-            // Reemplazar los elementos originales
-            ruleElement.innerHTML = '';
-            ruleElement.appendChild(editContainer);
-
-            // Eventos para el formulario de edición
-            const saveButton = editContainer.querySelector('.btn-save');
-            const cancelButton = editContainer.querySelector('.btn-cancel');
-
-            saveButton.addEventListener('click', () => {
-                const newShape = editShape.value;
-                const newColor = editColor.value;
-                const newMovement = editMovement.value;
-
-                // Actualizar la regla en configuredRules
-                const index = configuredRules.findIndex(rule => rule.id === parseInt(ruleId));
-                if (index !== -1) {
-                    configuredRules[index].shape = newShape;
-                    configuredRules[index].color = newColor;
-                    configuredRules[index].movement = newMovement;
-
-                    // Actualizar los datos en la lista
-                    ruleElement.dataset.shape = newShape;
-                    ruleElement.dataset.color = newColor;
-                    ruleElement.dataset.movement = newMovement;
-
-                    // Restaurar la vista
-                    ruleElement.innerHTML = `
-                        <span>Si ${newShape} y ${newColor}, entonces ${newMovement}</span>
-                        <button class="btn-edit" data-rule-id="${ruleId}">Editar</button>
-                        <button class="btn-delete" data-rule-id="${ruleId}">Eliminar</button>
-                    `;
-                }
-                // Enviar solicitud PATCH al servidor aquí
-            });
-
-            cancelButton.addEventListener('click', () => {
-                // Restaurar la vista
-                ruleElement.innerHTML = `
-                    <span>Si ${currentShape} y ${currentColor}, entonces ${currentMovement}</span>
-                    <button class="btn-edit" data-rule-id="${ruleId}">Editar</button>
-                    <button class="btn-delete" data-rule-id="${ruleId}">Eliminar</button>
-                `;
-            });
+        if(!shape || !color || !movement) {
+            alert("Por favor selecciona todos los campos.");
+            return;
         }
-    </script>
-</body>
-</html>
+
+        const newRule = {
+            id: Date.now(), // ID temporal
+            shape: shape,
+            color: color,
+            movement: movement
+        };
+
+        configuredRules.push(newRule);
+        renderRules();
+    });
+
+    // 4. ELIMINAR REGLA (Solo en memoria)
+    window.deleteRule = function(index) {
+        configuredRules.splice(index, 1);
+        renderRules();
+    };
+
+    // 5. GUARDAR CAMBIOS (Enviar al servidor)
+    document.getElementById('save-rules-btn').addEventListener('click', () => {
+        const btn = document.getElementById('save-rules-btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        btn.disabled = true;
+
+        // Usamos la ruta original: /guardar_logica
+        fetch("{{ url_for('api.guardar_logica') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(configuredRules)
+        })
+        .then(r => r.text())
+        .then(msg => {
+            alert("✅ " + msg); // Mensaje del servidor ("Configuracion guardada.")
+        })
+        .catch(err => {
+            alert("❌ Error al guardar: " + err);
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    });
+</script>
+{% endblock %}
